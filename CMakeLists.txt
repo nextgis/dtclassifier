@@ -2,36 +2,48 @@
 ########################################################
 # Files
 
-SET (classifier_SRCS
+SET (CLASSIFIER_SRCS
      classifier.cpp
-     classifiergui.cpp
+     classifierdialog.cpp
 )
 
-SET (classifier_UIS classifierguibase.ui)
+SET (CLASSIFIER_UIS
+     classifierdialogbase.ui
+)
 
-SET (classifier_MOC_HDRS
+SET (CLASSIFIER_MOC_HDRS
      classifier.h
-     classifiergui.h
+     classifierdialog.h
 )
 
-SET (classifier_RCCS  classifier.qrc)
+SET (CLASSIFIER_RCCS  classifier.qrc)
 
 ########################################################
 # Build
 
-QT4_WRAP_UI (classifier_UIS_H  ${classifier_UIS})
+QT4_WRAP_UI (CLASSIFIER_UIS_H  ${CLASSIFIER_UIS})
 
-QT4_WRAP_CPP (classifier_MOC_SRCS  ${classifier_MOC_HDRS})
+QT4_WRAP_CPP (CLASSIFIER_MOC_SRCS  ${CLASSIFIER_MOC_HDRS})
 
-QT4_ADD_RESOURCES(classifier_RCC_SRCS ${classifier_RCCS})
+QT4_ADD_RESOURCES(CLASSIFIER_RCC_SRCS ${CLASSIFIER_RCCS})
 
-ADD_LIBRARY (classifierplugin MODULE ${classifier_SRCS} ${classifier_MOC_SRCS} ${classifier_RCC_SRCS} ${classifier_UIS_H})
+ADD_LIBRARY (classifierplugin MODULE
+  ${CLASSIFIER_SRCS}
+  ${CLASSIFIER_MOC_SRCS}
+  ${CLASSIFIER_RCC_SRCS}
+  ${CLASSIFIER_UIS_H}
+)
 
 INCLUDE_DIRECTORIES(
      ${CMAKE_CURRENT_BINARY_DIR}
-     ../../core ../../core/raster ../../core/renderer ../../core/symbology
+     ${GDAL_INCLUDE_DIR}
+     ../../core/raster
+     ../../core/renderer
+     ../../core/symbology
+     ../../core
      ../../gui
      ..
+     .
 )
 
 TARGET_LINK_LIBRARIES(classifierplugin
@@ -45,5 +57,5 @@ TARGET_LINK_LIBRARIES(classifierplugin
 
 INSTALL(TARGETS classifierplugin
   RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
-  LIBRARY DESTINATION ${QGIS_PLUGIN_DIR})
-
+  LIBRARY DESTINATION ${QGIS_PLUGIN_DIR}
+)

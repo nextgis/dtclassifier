@@ -1,5 +1,5 @@
 /***************************************************************************
-  classifier.h
+  classifierdialog.cpp
   Raster classification using decision tree
   -------------------
   begin                : Mar 22, 2011
@@ -17,46 +17,52 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef CLASSIFIER_H
-#define CLASSIFIER_H
+#include <QComboBox>
+#include <QFileDialog>
+#include <QMessageBox>
 
-#include <QObject>
+#include "qgscontexthelp.h"
+#include "qgsmaplayerregistry.h"
+#include "qgsvectordataprovider.h"
+#include "qgsvectorlayer.h"
 
-#include "../qgisplugin.h"
+#include "classifierdialog.h"
 
-class QAction;
-class QToolBar;
-
-class QgisInterface;
-
-class Classifier: public QObject, public QgisPlugin
+ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
+    : QDialog( parent ),
+    mIface( iface )
 {
-    Q_OBJECT
-  public:
-    Classifier( QgisInterface* iface );
-    virtual ~Classifier();
+  setupUi( this );
+}
 
-  public slots:
-    //! init the gui
-    virtual void initGui();
-    //! Show the main dialog
-    void showMainDialog();
-    //! Show the about dialog
-    void showAboutDialog();
-    //! unload the plugin
-    void unload();
-    //! show the help document
-    void help();
+ClassifierDialog::~ClassifierDialog()
+{
+}
 
-  private:
-    int mPluginType;
+void ClassifierDialog::on_buttonBox_accepted()
+{
+  accept();
+}
 
-    //! Pointer to the QGIS interface object
-    QgisInterface *mIface;
+/*
+void ClassifierDialog::on_buttonBox_rejected()
+{
+  reject();
+}
 
-    //! Pointers to the actions
-    QAction * mActionClassify;
-    QAction * mActionAbout;
-};
+void ClassifierDialog::on_buttonBox_helpRequested()
+{
+  QgsContextHelp::run( context_id );
+}
+*/
 
-#endif //CLASSIFIER_H
+QgsVectorLayer* ClassifierDialog::vectorLayerByName( const QString& name )
+{
+  return 0;
+}
+
+void ClassifierDialog::enableOrDisableOkButton()
+{
+  bool enabled = true;
+  buttonBox->button( QDialogButtonBox::Ok )->setEnabled( enabled );
+}

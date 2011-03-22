@@ -1,5 +1,5 @@
 /***************************************************************************
-  classifier.h
+  classifierdialog.h
   Raster classification using decision tree
   -------------------
   begin                : Mar 22, 2011
@@ -17,46 +17,35 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef CLASSIFIER_H
-#define CLASSIFIER_H
+#ifndef CLASSIFIERDIALOG_H
+#define CLASSIFIERDIALOG_H
 
-#include <QObject>
+#include <QDialog>
 
-#include "../qgisplugin.h"
+#include "qgisinterface.h"
 
-class QAction;
-class QToolBar;
+#include "ui_classifierdialogbase.h"
 
-class QgisInterface;
-
-class Classifier: public QObject, public QgisPlugin
+class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 {
     Q_OBJECT
   public:
-    Classifier( QgisInterface* iface );
-    virtual ~Classifier();
-
-  public slots:
-    //! init the gui
-    virtual void initGui();
-    //! Show the main dialog
-    void showMainDialog();
-    //! Show the about dialog
-    void showAboutDialog();
-    //! unload the plugin
-    void unload();
-    //! show the help document
-    void help();
+    ClassifierDialog( QWidget* parent, QgisInterface* iface  );
+    ~ClassifierDialog();
 
   private:
-    int mPluginType;
+    static const int context_id = 0;
 
-    //! Pointer to the QGIS interface object
-    QgisInterface *mIface;
+  private slots:
+    void on_buttonBox_accepted();
+    //void on_buttonBox_rejected();
+    //void on_buttonBox_helpRequested();
 
-    //! Pointers to the actions
-    QAction * mActionClassify;
-    QAction * mActionAbout;
+  private:
+    QgisInterface* mIface;
+
+    QgsVectorLayer* vectorLayerByName( const QString& name );
+    void enableOrDisableOkButton();
 };
 
-#endif //CLASSIFIER_H
+#endif // CLASSIFIERDIALOG_H

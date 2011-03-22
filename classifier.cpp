@@ -2,11 +2,13 @@
   classifier.cpp
   Raster classification using decision tree
   -------------------
-         begin                : [PluginDate]
-         copyright            : [(C) Your Name and Date]
-         email                : [Your Email]
+  begin                : Mar 22, 2011
+  copyright            : (C) 2011 by Alexander Bruy
+  email                : alexander.bruy@gmail.com
 
- ***************************************************************************
+ ***************************************************************************/
+
+/***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -14,153 +16,101 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-/*  $Id: plugin.cpp 14897 2010-12-12 19:19:54Z wonder $ */
 
-//
-// QGIS Specific includes
-//
+#include <QAction>
+#include <QToolBar>
 
 #include <qgisinterface.h>
 #include <qgisgui.h>
 
 #include "classifier.h"
-#include "classifiergui.h"
+#include "classifierdialog.h"
 
-//
-// Qt4 Related Includes
-//
+static const QString _name = QObject::tr( "Classifier" );
+static const QString _description = QObject::tr( "Raster classification using decision tree" );
+static const QString _version = QObject::tr( "Version 0.1" );
+static const QString _icon = ":/classifier/icons/classifier.png";
 
-#include <QAction>
-#include <QToolBar>
-
-
-static const char * const sIdent = "$Id: plugin.cpp 14897 2010-12-12 19:19:54Z wonder $";
-static const QString sName = QObject::tr( "Classifier" );
-static const QString sDescription = QObject::tr( "Raster classification using decision tree" );
-static const QString sPluginVersion = QObject::tr( "Version 0.1" );
-static const QgisPlugin::PLUGINTYPE sPluginType = QgisPlugin::UI;
-static const QString sPluginIcon = ":/classifier/classifier.png";
-
-//////////////////////////////////////////////////////////////////////
-//
-// THE FOLLOWING METHODS ARE MANDATORY FOR ALL PLUGINS
-//
-//////////////////////////////////////////////////////////////////////
-
-/**
- * Constructor for the plugin. The plugin is passed a pointer
- * an interface object that provides access to exposed functions in QGIS.
- * @param theQGisInterface - Pointer to the QGIS interface object
- */
-Classifier::Classifier( QgisInterface * theQgisInterface ):
-    QgisPlugin( sName, sDescription, sPluginVersion, sPluginType ),
-    mQGisIface( theQgisInterface )
+Classifier::Classifier( QgisInterface* iface )
+    : mIface( iface ), mActionClassify( 0 ), mActionAbout( 0 )
 {
 }
 
 Classifier::~Classifier()
 {
-
 }
 
-/*
- * Initialize the GUI interface for the plugin - this is only called once when the plugin is
- * added to the plugin registry in the QGIS application.
- */
 void Classifier::initGui()
 {
+  mActionClassify = new QAction( QIcon( ":/classifier/icons/classifier.png" ), tr( "Classifier" ), this );
+  mActionClassify->setWhatsThis( tr( "Raster classification using decision tree" ) );
+  connect( mActionClassify, SIGNAL( triggered() ), this, SLOT( showMainDialog() ) );
 
-  // Create the action for tool
-  mQActionPointer = new QAction( QIcon( ":/classifier/classifier.png" ), tr( "Classifier" ), this );
-  // Set the what's this text
-  mQActionPointer->setWhatsThis( tr( "Replace this with a short description of what the plugin does" ) );
-  // Connect the action to the run
-  connect( mQActionPointer, SIGNAL( triggered() ), this, SLOT( run() ) );
+  mActionAbout = new QAction( QIcon( ":/classifier/icons/about.png" ), tr( "About" ), this );
+  mActionAbout->setWhatsThis( tr( "About Classifier" ) );
+  connect( mActionAbout, SIGNAL( triggered() ), this, SLOT( showAboutDialog() ) );
+
   // Add the icon to the toolbar
-  mQGisIface->addToolBarIcon( mQActionPointer );
-  mQGisIface->addPluginToMenu( tr( "&Classifier" ), mQActionPointer );
-
+  mIface->addToolBarIcon( mActionClassify );
+  mIface->addPluginToMenu( tr( "Classifier" ), mActionClassify );
+  mIface->addPluginToMenu( tr( "Classifier" ), mActionAbout );
 }
-//method defined in interface
+
 void Classifier::help()
 {
-  //implement me!
+  // implement me!
 }
 
-// Slot called when the menu item is triggered
-// If you created more menu items / toolbar buttons in initiGui, you should
-// create a separate handler for each action - this single run() method will
-// not be enough
-void Classifier::run()
+void Classifier::showMainDialog()
 {
-  ClassifierGui *myPluginGui = new ClassifierGui( mQGisIface->mainWindow(), QgisGui::ModalDialogFlags );
-  myPluginGui->setAttribute( Qt::WA_DeleteOnClose );
-
-  myPluginGui->show();
+  ClassifierDialog dlg( 0, mIface );
+  dlg.exec();
 }
 
-// Unload the plugin by cleaning up the GUI
+void Classifier::showAboutDialog()
+{
+  // implement me!
+}
+
 void Classifier::unload()
 {
-  // remove the GUI
-  mQGisIface->removePluginMenu( "&Classifier", mQActionPointer );
-  mQGisIface->removeToolBarIcon( mQActionPointer );
-  delete mQActionPointer;
+  mIface->removePluginMenu( "Classifier", mActionClassify );
+  mIface->removePluginMenu( "Classifier", mActionAbout );
+  mIface->removeToolBarIcon( mActionClassify );
+  delete mActionClassify;
+  delete mActionAbout;
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-//
-//
-//  THE FOLLOWING CODE IS AUTOGENERATED BY THE PLUGIN BUILDER SCRIPT
-//    YOU WOULD NORMALLY NOT NEED TO MODIFY THIS, AND YOUR PLUGIN
-//      MAY NOT WORK PROPERLY IF YOU MODIFY THIS INCORRECTLY
-//
-//
-//////////////////////////////////////////////////////////////////////////
-
-
-/**
- * Required extern functions needed  for every plugin
- * These functions can be called prior to creating an instance
- * of the plugin class
- */
-// Class factory to return a new instance of the plugin class
 QGISEXTERN QgisPlugin * classFactory( QgisInterface * theQgisInterfacePointer )
 {
   return new Classifier( theQgisInterfacePointer );
 }
-// Return the name of the plugin - note that we do not user class members as
-// the class may not yet be insantiated when this method is called.
+
 QGISEXTERN QString name()
 {
-  return sName;
+  return _name;
 }
 
-// Return the description
 QGISEXTERN QString description()
 {
-  return sDescription;
+  return _description;
 }
 
-// Return the type (either UI or MapLayer plugin)
 QGISEXTERN int type()
 {
-  return sPluginType;
+  return QgisPlugin::UI;
 }
 
-// Return the version number for the plugin
 QGISEXTERN QString version()
 {
-  return sPluginVersion;
+  return _version;
 }
 
 QGISEXTERN QString icon()
 {
-  return sPluginIcon;
+  return _icon;
 }
 
-// Delete ourself
 QGISEXTERN void unload( QgisPlugin * thePluginPointer )
 {
   delete thePluginPointer;

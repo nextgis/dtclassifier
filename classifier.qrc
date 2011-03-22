@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/classifier/" >
-        <file>classifier.png</file>
+        <file>icons/classifier.png</file>
+        <file>icons/about.png</file>
     </qresource>
 </RCC>
