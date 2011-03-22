@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/classifier/" >
+        <file>classifier.png</file>
+    </qresource>
+</RCC>
