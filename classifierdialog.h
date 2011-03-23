@@ -37,14 +37,29 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     static const int context_id = 0;
 
   private slots:
-    void on_buttonBox_accepted();
-    //void on_buttonBox_rejected();
+    void selectOutputFile();
+    void doClassification();
+    void updateInputFileName();
+    //void on_buttonBox_accepted();
+    void on_buttonBox_rejected();
     //void on_buttonBox_helpRequested();
 
   private:
     QgisInterface* mIface;
+    QString mInputFileName;
+    QString mOutputFileName;
 
+    //QStringList* getVectorLayerNames();
+    //QStringList* getRasterLayerNames();
     QgsVectorLayer* vectorLayerByName( const QString& name );
+    QgsRasterLayer* rasterLayerByName( const QString& name );
+
+    void mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY );
+    void pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY );
+    void applyGeoTransform( double inX, double inY, double* geoTransform, double& outX, double& outY );
+    void invertGeoTransform( double* inGeoTransform, double* outGeoTransform);
+
+    void manageGui();
     void enableOrDisableOkButton();
 };
 

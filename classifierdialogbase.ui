@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>392</width>
-    <height>308</height>
+    <height>331</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -69,6 +69,13 @@
     </layout>
    </item>
    <item>
+    <widget class="QCheckBox" name="discreteLabelsCheckBox">
+     <property name="text">
+      <string>Output values are discrete class labels</string>
+     </property>
+    </widget>
+   </item>
+   <item>
     <widget class="QCheckBox" name="addToCanvasCheckBox">
      <property name="text">
       <string>Add result to map canvas</string>
@@ -88,7 +95,7 @@
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Help|QDialogButtonBox::Ok</set>
+      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
      </property>
     </widget>
    </item>
