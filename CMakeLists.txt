@@ -44,11 +44,14 @@ INCLUDE_DIRECTORIES(
      ../../gui
      ..
      .
+     /usr/include/opencv2
 )
 
 TARGET_LINK_LIBRARIES(classifierplugin
   qgis_core
   qgis_gui
+  /usr/lib/libopencv_core.so
+  /usr/lib/libopencv_ml.so
 )
 
 

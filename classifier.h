@@ -22,7 +22,7 @@
 
 #include <QObject>
 
-#include "../qgisplugin.h"
+#include "qgisplugin.h"
 
 class QAction;
 class QToolBar;
@@ -39,9 +39,9 @@ class Classifier: public QObject, public QgisPlugin
   public slots:
     //! init the gui
     virtual void initGui();
-    //! Show the main dialog
+    //! show the main dialog
     void showMainDialog();
-    //! Show the about dialog
+    //! show the about dialog
     void showAboutDialog();
     //! unload the plugin
     void unload();
@@ -49,12 +49,10 @@ class Classifier: public QObject, public QgisPlugin
     void help();
 
   private:
-    int mPluginType;
-
-    //! Pointer to the QGIS interface object
+    //! pointer to the QGIS interface object
     QgisInterface *mIface;
 
-    //! Pointers to the actions
+    //! pointers to the actions
     QAction * mActionClassify;
     QAction * mActionAbout;
 };
