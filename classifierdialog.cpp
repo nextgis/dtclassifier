@@ -21,6 +21,7 @@
 #include <QDebug>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QSettings>
 
 #include <math.h>
 
@@ -63,7 +64,13 @@ ClassifierDialog::~ClassifierDialog()
 
 void ClassifierDialog::selectOutputFile()
 {
-  QString fileName = QFileDialog::getSaveFileName( this, tr( "Select output file" ), ".", "GeoTiff (*.tif *.tiff *.TIF *.TIFF)" );
+  // get last used directory
+  QSettings settings( "NextGIS", "DTclassifier" );
+  QString lastDir;
+
+  lastDir = settings.value( "lastUsedDir", "." ).toString();
+
+  QString fileName = QFileDialog::getSaveFileName( this, tr( "Select output file" ), lastDir, "GeoTiff (*.tif *.tiff *.TIF *.TIFF)" );
 
   if ( fileName.isEmpty() )
   {
@@ -79,12 +86,21 @@ void ClassifierDialog::selectOutputFile()
   mOutputFileName = fileName;
   leOutputRaster->setText( mOutputFileName );
 
+  // save last used directory
+  settings.setValue( "lastUsedDir", QFileInfo( fileName ).absolutePath() );
+
   enableOrDisableOkButton();
   qDebug() << "OutFileName" << mOutputFileName;
 }
 
 void ClassifierDialog::doClassification()
 {
+  // save checkboxes state
+  QSettings settings( "NextGIS", "DTclassifier" );
+
+  settings.setValue( "discreteClasses", discreteLabelsCheckBox->isChecked() );
+  settings.setValue( "addToCanvas", addToCanvasCheckBox->isChecked() );
+
   mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
   qDebug() << "InputFileName" << mInputFileName;
 
@@ -329,6 +345,13 @@ QgsRasterLayer* ClassifierDialog::rasterLayerByName( const QString& name )
 
 void ClassifierDialog::manageGui()
 {
+  // restore checkboxes state
+  QSettings settings( "NextGIS", "DTclassifier" );
+
+
+  discreteLabelsCheckBox->setChecked( settings.value( "discreteClasses", true ).toBool() );
+  addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", false ).toBool() );
+
   // populate vector layers comboboxes
   QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
   QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
