@@ -73,6 +73,9 @@
      <property name="text">
       <string>Output values are discrete class labels</string>
      </property>
+     <property name="checked">
+      <bool>true</bool>
+     </property>
     </widget>
    </item>
    <item>
