@@ -150,7 +150,7 @@ void ClassifierDialog::doClassification()
     cvmSet( data, i, 3, rasterData[3] );
     cvmSet( data, i, 4, rasterData[4] );
     cvmSet( data, i, 5, rasterData[5] );
-    cvmSet( responses, i, 0, 0 );
+    cvmSet( responses, i, 0, 1 );
     i++;
   }
 
@@ -172,7 +172,7 @@ void ClassifierDialog::doClassification()
     cvmSet( data, i, 3, rasterData[3] );
     cvmSet( data, i, 4, rasterData[4] );
     cvmSet( data, i, 5, rasterData[5] );
-    cvmSet( responses, i, 0, 1 );
+    cvmSet( responses, i, 0, 0 );
     i++;
   }
 
