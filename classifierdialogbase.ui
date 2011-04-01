@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>392</width>
-    <height>331</height>
+    <width>377</width>
+    <height>443</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Classifier</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout_3">
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
@@ -69,20 +69,70 @@
     </layout>
    </item>
    <item>
-    <widget class="QCheckBox" name="discreteLabelsCheckBox">
-     <property name="text">
-      <string>Output values are discrete class labels</string>
-     </property>
-     <property name="checked">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
     <widget class="QCheckBox" name="addToCanvasCheckBox">
      <property name="text">
       <string>Add result to map canvas</string>
      </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>Settings</string>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QRadioButton" name="rbDecisionTree">
+          <property name="text">
+           <string>Use decision tree</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_2">
+          <item>
+           <spacer name="horizontalSpacer">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Minimum</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>40</width>
+              <height>20</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QCheckBox" name="discreteLabelsCheckBox">
+            <property name="text">
+             <string>Output values are discrete class labels</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <widget class="QRadioButton" name="rbRandomTrees">
+        <property name="text">
+         <string>Use random trees</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
     </widget>
    </item>
    <item>
