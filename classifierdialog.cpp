@@ -266,6 +266,8 @@ void ClassifierDialog::doClassification()
   cvReleaseMat( &sample );
   dtree->clear();
   delete dtree;
+  rtree->clear();
+  delete rtree;
 
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
