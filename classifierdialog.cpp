@@ -249,8 +249,6 @@ void ClassifierDialog::doClassification()
 
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
-
-  QMessageBox::information( this, tr( "Completed" ), tr( "Classification completed!" ) );
 }
 
 /*
