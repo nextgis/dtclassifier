@@ -249,6 +249,14 @@ void ClassifierDialog::doClassification()
 
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
+
+  // add classified raster to map canvas if requested
+  if ( addToCanvasCheckBox->isChecked() )
+  {
+    QgsRasterLayer* newLayer;
+    newLayer = new QgsRasterLayer( mOutputFileName, QFileInfo( mOutputFileName ).baseName() );
+    QgsMapLayerRegistry::instance()->addMapLayer( newLayer );
+  }
 }
 
 /*
