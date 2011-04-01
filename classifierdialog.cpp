@@ -50,6 +50,9 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
 
   manageGui();
 
+  // need this for working with rasters
+  GDALAllRegister();
+
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
   connect( cmbInputRaster, SIGNAL( currentIndexChanged( const QString& ) ), this, SLOT( updateInputFileName() ) );
   connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleCheckBoxState( bool ) ) );
@@ -79,10 +82,10 @@ void ClassifierDialog::selectOutputFile()
   }
 
   // ensure the user never ommited the extension from the file name
-  if ( !fileName.toLower().endsWith( ".tif" ) || !fileName.toLower().endsWith( ".tiff" ) )
-  {
-    fileName += ".tif";
-  }
+  //if ( !fileName.toLower().endsWith( ".tif" ) || !fileName.toLower().endsWith( ".tiff" ) )
+  //{
+  //  fileName += ".tif";
+  //}
 
   mOutputFileName = fileName;
   leOutputRaster->setText( mOutputFileName );
@@ -111,7 +114,6 @@ void ClassifierDialog::doClassification()
   long featCount = layerAbsence->featureCount() + layerPresence->featureCount();
 
   // read input raster metadata. We need them to create output raster
-  GDALAllRegister();
   GDALDataset *inRaster;
   inRaster = (GDALDataset *) GDALOpen( mInputFileName.toUtf8(), GA_ReadOnly );
   qDebug() << "input raster opened";
