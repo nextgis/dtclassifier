@@ -193,26 +193,36 @@ void ClassifierDialog::doClassification()
     i++;
   }
 
-  // build decision tree
   CvDTree* dtree = new CvDTree();
-  if ( discreteLabelsCheckBox->isChecked() )
+  CvRTrees* rtree = new CvRTrees();
+  // use decision tree
+  if ( rbDecisionTree->isChecked() )
   {
-    CvMat* var_type;
-    var_type = cvCreateMat( data->cols + 1, 1, CV_8U );
-    cvSet( var_type, cvScalarAll(CV_VAR_CATEGORICAL) );
-    dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type );
-    cvReleaseMat( &var_type );
+    // build decision tree classifier
+    if ( discreteLabelsCheckBox->isChecked() )
+    {
+      CvMat* var_type;
+      var_type = cvCreateMat( data->cols + 1, 1, CV_8U );
+      cvSet( var_type, cvScalarAll(CV_VAR_CATEGORICAL) );
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type );
+      cvReleaseMat( &var_type );
+    }
+    else
+    {
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0 );
+    }
+
+    QFileInfo fi( mOutputFileName );
+    QString treeFileName;
+    treeFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_tree.yaml";
+
+    dtree->save( treeFileName.toUtf8(), "MyTree" );
   }
-  else
+  else // or random trees
   {
-    dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0 );
+    // build random trees classifier
+    rtree->train( data, CV_ROW_SAMPLE, responses );
   }
-
-  QFileInfo fi( mOutputFileName );
-  QString treeFileName;
-  treeFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_tree.yaml";
-
-  dtree->save( treeFileName.toUtf8(), "MyTree" );
 
   cvReleaseMat( &data );
   cvReleaseMat( &responses );
@@ -236,7 +246,14 @@ void ClassifierDialog::doClassification()
       cvmSet( sample, 4, 0, rasterData[ xSize*4 + col ] );
       cvmSet( sample, 5, 0, rasterData[ xSize*5 + col ] );
 
-      outData[ col ] = dtree->predict( sample )->value;
+      if ( rbDecisionTree->isChecked() )
+      {
+        outData[ col ] = dtree->predict( sample )->value;
+      }
+      else
+      {
+        outData[ col ] = rtree->predict( sample );
+      }
     }
     outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0 , 0 );
     progressBar->setValue( progressBar->value() + 1 );
