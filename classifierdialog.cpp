@@ -220,6 +220,9 @@ void ClassifierDialog::doClassification()
   CvMat* sample = cvCreateMat( bandCount, 1, CV_32F );
   QVector<float> outData( xSize );
 
+  progressBar->setRange( 0, ySize );
+  progressBar->setValue( 0 );
+
   for ( int row = 0; row < ySize; ++row )
   {
     inRaster->RasterIO( GF_Read, 0, row, xSize, 1, (void *)rasterData.data(), xSize, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
@@ -235,17 +238,17 @@ void ClassifierDialog::doClassification()
       outData[ col ] = dtree->predict( sample )->value;
     }
     outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0 , 0 );
+    progressBar->setValue( progressBar->value() + 1 );
   }
 
   // cleanup
+  progressBar->setValue( 0 );
   cvReleaseMat( &sample );
   dtree->clear();
   delete dtree;
 
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
-
-  QMessageBox::information( this, tr( "Completed" ), tr( "Classification completed!" ) );
 }
 
 /*
