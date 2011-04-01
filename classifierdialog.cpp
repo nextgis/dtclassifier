@@ -52,6 +52,7 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
 
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
   connect( cmbInputRaster, SIGNAL( currentIndexChanged( const QString& ) ), this, SLOT( updateInputFileName() ) );
+  connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleCheckBoxState( bool ) ) );
 
   // use Ok button for starting classification
   disconnect( buttonBox, SIGNAL( accepted() ), this, SLOT( accept() ) );
@@ -356,12 +357,24 @@ QgsRasterLayer* ClassifierDialog::rasterLayerByName( const QString& name )
 
 void ClassifierDialog::manageGui()
 {
-  // restore checkboxes state
+  // restore ui state from settings
   QSettings settings( "NextGIS", "DTclassifier" );
 
-
-  discreteLabelsCheckBox->setChecked( settings.value( "discreteClasses", true ).toBool() );
   addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", false ).toBool() );
+
+  // classification settings
+  QString algorithm = settings.value( "classificationAlg", "dtree" ).toString();
+  if ( algorithm == "dtree" )
+  {
+    rbDecisionTree->setChecked( true );
+    discreteLabelsCheckBox->setEnabled( true );
+  }
+  else
+  {
+    rbRandomTrees->setChecked( true );
+    discreteLabelsCheckBox->setEnabled( false );
+  }
+  discreteLabelsCheckBox->setChecked( settings.value( "discreteClasses", true ).toBool() );
 
   // populate vector layers comboboxes
   QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
@@ -385,6 +398,19 @@ void ClassifierDialog::manageGui()
       }
       cmbInputRaster->addItem( layer_it.value()->name() );
     }
+  }
+}
+
+void ClassifierDialog::toggleCheckBoxState( bool checked )
+{
+  //if ( rbDecisionTree->isChecked() )
+  if ( checked )
+  {
+    discreteLabelsCheckBox->setEnabled( true );
+  }
+  else
+  {
+    discreteLabelsCheckBox->setEnabled( false );
   }
 }
 
