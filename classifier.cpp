@@ -58,7 +58,7 @@ void Classifier::initGui()
 
 void Classifier::help()
 {
-  // implement me!
+  // TODO: implement me!
 }
 
 void Classifier::showMainDialog()
@@ -69,7 +69,7 @@ void Classifier::showMainDialog()
 
 void Classifier::showAboutDialog()
 {
-  // implement me!
+  // TODO: implement me!
 }
 
 void Classifier::unload()
