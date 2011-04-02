@@ -40,6 +40,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void selectOutputFile();
     void doClassification();
     void updateInputFileName();
+    void toggleCheckBoxState( bool checked );
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();
     //void on_buttonBox_helpRequested();

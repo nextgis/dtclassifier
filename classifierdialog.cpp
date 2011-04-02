@@ -21,6 +21,7 @@
 #include <QDebug>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QSettings>
 
 #include <math.h>
 
@@ -49,8 +50,12 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
 
   manageGui();
 
+  // need this for working with rasters
+  GDALAllRegister();
+
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
   connect( cmbInputRaster, SIGNAL( currentIndexChanged( const QString& ) ), this, SLOT( updateInputFileName() ) );
+  connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleCheckBoxState( bool ) ) );
 
   // use Ok button for starting classification
   disconnect( buttonBox, SIGNAL( accepted() ), this, SLOT( accept() ) );
@@ -63,7 +68,13 @@ ClassifierDialog::~ClassifierDialog()
 
 void ClassifierDialog::selectOutputFile()
 {
-  QString fileName = QFileDialog::getSaveFileName( this, tr( "Select output file" ), ".", "GeoTiff (*.tif *.tiff *.TIF *.TIFF)" );
+  // get last used directory
+  QSettings settings( "NextGIS", "DTclassifier" );
+  QString lastDir;
+
+  lastDir = settings.value( "lastUsedDir", "." ).toString();
+
+  QString fileName = QFileDialog::getSaveFileName( this, tr( "Select output file" ), lastDir, "GeoTiff (*.tif *.tiff *.TIF *.TIFF)" );
 
   if ( fileName.isEmpty() )
   {
@@ -71,13 +82,16 @@ void ClassifierDialog::selectOutputFile()
   }
 
   // ensure the user never ommited the extension from the file name
-  if ( !fileName.toLower().endsWith( ".tif" ) || !fileName.toLower().endsWith( ".tiff" ) )
-  {
-    fileName += ".tif";
-  }
+  //if ( !fileName.toLower().endsWith( ".tif" ) || !fileName.toLower().endsWith( ".tiff" ) )
+  //{
+  //  fileName += ".tif";
+  //}
 
   mOutputFileName = fileName;
   leOutputRaster->setText( mOutputFileName );
+
+  // save last used directory
+  settings.setValue( "lastUsedDir", QFileInfo( fileName ).absolutePath() );
 
   enableOrDisableOkButton();
   qDebug() << "OutFileName" << mOutputFileName;
@@ -85,6 +99,12 @@ void ClassifierDialog::selectOutputFile()
 
 void ClassifierDialog::doClassification()
 {
+  // save checkboxes state
+  QSettings settings( "NextGIS", "DTclassifier" );
+
+  settings.setValue( "discreteClasses", discreteLabelsCheckBox->isChecked() );
+  settings.setValue( "addToCanvas", addToCanvasCheckBox->isChecked() );
+
   mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
   qDebug() << "InputFileName" << mInputFileName;
 
@@ -94,7 +114,6 @@ void ClassifierDialog::doClassification()
   long featCount = layerAbsence->featureCount() + layerPresence->featureCount();
 
   // read input raster metadata. We need them to create output raster
-  GDALAllRegister();
   GDALDataset *inRaster;
   inRaster = (GDALDataset *) GDALOpen( mInputFileName.toUtf8(), GA_ReadOnly );
   qDebug() << "input raster opened";
@@ -150,7 +169,7 @@ void ClassifierDialog::doClassification()
     cvmSet( data, i, 3, rasterData[3] );
     cvmSet( data, i, 4, rasterData[4] );
     cvmSet( data, i, 5, rasterData[5] );
-    cvmSet( responses, i, 0, 0 );
+    cvmSet( responses, i, 0, 1 );
     i++;
   }
 
@@ -172,30 +191,40 @@ void ClassifierDialog::doClassification()
     cvmSet( data, i, 3, rasterData[3] );
     cvmSet( data, i, 4, rasterData[4] );
     cvmSet( data, i, 5, rasterData[5] );
-    cvmSet( responses, i, 0, 1 );
+    cvmSet( responses, i, 0, 0 );
     i++;
   }
 
-  // build decision tree
   CvDTree* dtree = new CvDTree();
-  if ( discreteLabelsCheckBox->isChecked() )
+  CvRTrees* rtree = new CvRTrees();
+  // use decision tree
+  if ( rbDecisionTree->isChecked() )
   {
-    CvMat* var_type;
-    var_type = cvCreateMat( data->cols + 1, 1, CV_8U );
-    cvSet( var_type, cvScalarAll(CV_VAR_CATEGORICAL) );
-    dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type );
-    cvReleaseMat( &var_type );
+    // build decision tree classifier
+    if ( discreteLabelsCheckBox->isChecked() )
+    {
+      CvMat* var_type;
+      var_type = cvCreateMat( data->cols + 1, 1, CV_8U );
+      cvSet( var_type, cvScalarAll(CV_VAR_CATEGORICAL) );
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type );
+      cvReleaseMat( &var_type );
+    }
+    else
+    {
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0 );
+    }
+
+    QFileInfo fi( mOutputFileName );
+    QString treeFileName;
+    treeFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_tree.yaml";
+
+    dtree->save( treeFileName.toUtf8(), "MyTree" );
   }
-  else
+  else // or random trees
   {
-    dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0 );
+    // build random trees classifier
+    rtree->train( data, CV_ROW_SAMPLE, responses );
   }
-
-  QFileInfo fi( mOutputFileName );
-  QString treeFileName;
-  treeFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_tree.yaml";
-
-  dtree->save( treeFileName.toUtf8(), "MyTree" );
 
   cvReleaseMat( &data );
   cvReleaseMat( &responses );
@@ -203,6 +232,9 @@ void ClassifierDialog::doClassification()
   // classify raster using tree
   CvMat* sample = cvCreateMat( bandCount, 1, CV_32F );
   QVector<float> outData( xSize );
+
+  progressBar->setRange( 0, ySize );
+  progressBar->setValue( 0 );
 
   for ( int row = 0; row < ySize; ++row )
   {
@@ -216,20 +248,37 @@ void ClassifierDialog::doClassification()
       cvmSet( sample, 4, 0, rasterData[ xSize*4 + col ] );
       cvmSet( sample, 5, 0, rasterData[ xSize*5 + col ] );
 
-      outData[ col ] = dtree->predict( sample )->value;
+      if ( rbDecisionTree->isChecked() )
+      {
+        outData[ col ] = dtree->predict( sample )->value;
+      }
+      else
+      {
+        outData[ col ] = rtree->predict( sample );
+      }
     }
     outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0 , 0 );
+    progressBar->setValue( progressBar->value() + 1 );
   }
 
   // cleanup
+  progressBar->setValue( 0 );
   cvReleaseMat( &sample );
   dtree->clear();
   delete dtree;
+  rtree->clear();
+  delete rtree;
 
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
 
-  QMessageBox::information( this, tr( "Completed" ), tr( "Classification completed!" ) );
+  // add classified raster to map canvas if requested
+  if ( addToCanvasCheckBox->isChecked() )
+  {
+    QgsRasterLayer* newLayer;
+    newLayer = new QgsRasterLayer( mOutputFileName, QFileInfo( mOutputFileName ).baseName() );
+    QgsMapLayerRegistry::instance()->addMapLayer( newLayer );
+  }
 }
 
 /*
@@ -329,6 +378,25 @@ QgsRasterLayer* ClassifierDialog::rasterLayerByName( const QString& name )
 
 void ClassifierDialog::manageGui()
 {
+  // restore ui state from settings
+  QSettings settings( "NextGIS", "DTclassifier" );
+
+  addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", false ).toBool() );
+
+  // classification settings
+  QString algorithm = settings.value( "classificationAlg", "dtree" ).toString();
+  if ( algorithm == "dtree" )
+  {
+    rbDecisionTree->setChecked( true );
+    discreteLabelsCheckBox->setEnabled( true );
+  }
+  else
+  {
+    rbRandomTrees->setChecked( true );
+    discreteLabelsCheckBox->setEnabled( false );
+  }
+  discreteLabelsCheckBox->setChecked( settings.value( "discreteClasses", true ).toBool() );
+
   // populate vector layers comboboxes
   QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
   QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
@@ -351,6 +419,19 @@ void ClassifierDialog::manageGui()
       }
       cmbInputRaster->addItem( layer_it.value()->name() );
     }
+  }
+}
+
+void ClassifierDialog::toggleCheckBoxState( bool checked )
+{
+  //if ( rbDecisionTree->isChecked() )
+  if ( checked )
+  {
+    discreteLabelsCheckBox->setEnabled( true );
+  }
+  else
+  {
+    discreteLabelsCheckBox->setEnabled( false );
   }
 }
 

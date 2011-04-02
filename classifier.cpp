@@ -26,7 +26,7 @@
 #include "classifier.h"
 #include "classifierdialog.h"
 
-static const QString _name = QObject::tr( "Classifier" );
+static const QString _name = QObject::tr( "DTclassifier" );
 static const QString _description = QObject::tr( "Raster classification using decision tree" );
 static const QString _version = QObject::tr( "Version 0.1.0" );
 static const QString _icon = ":/classifier/icons/classifier.png";
@@ -42,23 +42,23 @@ Classifier::~Classifier()
 
 void Classifier::initGui()
 {
-  mActionClassify = new QAction( QIcon( ":/classifier/icons/classifier.png" ), tr( "Classifier" ), this );
+  mActionClassify = new QAction( QIcon( ":/classifier/icons/classifier.png" ), tr( "DTclassifier" ), this );
   mActionClassify->setWhatsThis( tr( "Raster classification using decision tree" ) );
   connect( mActionClassify, SIGNAL( triggered() ), this, SLOT( showMainDialog() ) );
 
   mActionAbout = new QAction( QIcon( ":/classifier/icons/about.png" ), tr( "About" ), this );
-  mActionAbout->setWhatsThis( tr( "About Classifier" ) );
+  mActionAbout->setWhatsThis( tr( "About DTclassifier" ) );
   connect( mActionAbout, SIGNAL( triggered() ), this, SLOT( showAboutDialog() ) );
 
   // Add the icon to the toolbar
   mIface->addToolBarIcon( mActionClassify );
-  mIface->addPluginToMenu( tr( "Classifier" ), mActionClassify );
-  mIface->addPluginToMenu( tr( "Classifier" ), mActionAbout );
+  mIface->addPluginToMenu( tr( "DTclassifier" ), mActionClassify );
+  mIface->addPluginToMenu( tr( "DTclassifier" ), mActionAbout );
 }
 
 void Classifier::help()
 {
-  // implement me!
+  // TODO: implement me!
 }
 
 void Classifier::showMainDialog()
@@ -69,13 +69,13 @@ void Classifier::showMainDialog()
 
 void Classifier::showAboutDialog()
 {
-  // implement me!
+  // TODO: implement me!
 }
 
 void Classifier::unload()
 {
-  mIface->removePluginMenu( "Classifier", mActionClassify );
-  mIface->removePluginMenu( "Classifier", mActionAbout );
+  mIface->removePluginMenu( "DTclassifier", mActionClassify );
+  mIface->removePluginMenu( "DTclassifier", mActionAbout );
   mIface->removeToolBarIcon( mActionClassify );
   delete mActionClassify;
   delete mActionAbout;
