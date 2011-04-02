@@ -376,6 +376,49 @@ QgsRasterLayer* ClassifierDialog::rasterLayerByName( const QString& name )
   return 0;
 }
 
+QgsVectroLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform )
+{
+  QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", "myPoints", "memory" );
+  QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
+  QgsVectorDataProvider *provider = polygonLayer->dataProvider();
+
+  // TODO: add attributes to provider
+
+  QgsFeature feat;
+  QgsGeometry geom;
+  QgsRectangle bbox;
+  QgsPoint pnt;
+  double xMin, xMax, yMin, yMax;
+  double startCol, startRow, endCol, endRow;
+
+  provider->rewind();
+  provider->select();
+
+  while ( provider->nextFeature( feat ) )
+  {
+    geom = feat.geometry();
+    bbox = geom.boundingBox();
+
+    xMin = bbox.xMinimum();
+    xMax = bbox.xMaximum();
+    yMin = bbox.yMinimum();
+    yMax = bbox.yMaximum();
+
+    mapToPixel( xMin, yMax, geotransform, startRow, startCol);
+    mapToPixel( xMax, yMin, geotransform, endRow, endCol);
+
+    for ( int i = startRow; i < endRow; i++ )
+    {
+      for ( int j = startCol; i < endCol; j++ )
+      {
+        // create point and test
+      }
+    }
+  }
+  return pointsLayer;
+}
+
+
 void ClassifierDialog::manageGui()
 {
   // restore ui state from settings
@@ -424,7 +467,6 @@ void ClassifierDialog::manageGui()
 
 void ClassifierDialog::toggleCheckBoxState( bool checked )
 {
-  //if ( rbDecisionTree->isChecked() )
   if ( checked )
   {
     discreteLabelsCheckBox->setEnabled( true );
@@ -438,7 +480,7 @@ void ClassifierDialog::toggleCheckBoxState( bool checked )
 void ClassifierDialog::updateInputFileName()
 {
   mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
-  qDebug() << "InputFileName" << mInputFileName;
+  //qDebug() << "InputFileName" << mInputFileName;
 }
 
 void ClassifierDialog::enableOrDisableOkButton()
@@ -452,6 +494,8 @@ void ClassifierDialog::enableOrDisableOkButton()
 
   buttonBox->button( QDialogButtonBox::Ok )->setEnabled( enabled );
 }
+
+// -------------- Coordinate transform routines ------------------------
 
 void ClassifierDialog::mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY )
 {
