@@ -104,6 +104,7 @@ void ClassifierDialog::doClassification()
 
   settings.setValue( "discreteClasses", discreteLabelsCheckBox->isChecked() );
   settings.setValue( "addToCanvas", addToCanvasCheckBox->isChecked() );
+  settings.setValue( "saveTempLayers", savePointLayersCheckBox->isChecked() );
 
   mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
   qDebug() << "InputFileName" << mInputFileName;
@@ -126,9 +127,14 @@ void ClassifierDialog::doClassification()
   inRaster->GetGeoTransform( geotransform );
 
   // create points from polygons
-  QgsVectorLayer *presence = pointsFromPolygons( layerPresence, geotransform, "pointsPresence" );
-  QgsMapLayerRegistry::instance()->addMapLayer( presence );
-  return;
+  //QgsVectorLayer *presence = pointsFromPolygons( layerPresence, geotransform, "pointsPresence" );
+  //QgsMapLayerRegistry::instance()->addMapLayer( presence );
+  //return;
+
+  // save temporary layers on disk if requested
+  //if ( savePointLayersCheckBox.isChecked() )
+  //{
+  //}
 
   // create output file
   GDALDriver *driver;
@@ -415,8 +421,8 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
     mapToPixel( xMin, yMax, geoTransform, startRow, startCol);
     mapToPixel( xMax, yMin, geoTransform, endRow, endCol);
 
-    qDebug() << "ROWS" << startRow << endRow;
-    qDebug() << "COLS" << startCol << endCol;
+    //qDebug() << "ROWS" << startRow << endRow;
+    //qDebug() << "COLS" << startCol << endCol;
 
     for ( int row = startRow; row < endRow + 1; row++ )
     {
@@ -449,6 +455,7 @@ void ClassifierDialog::manageGui()
   QSettings settings( "NextGIS", "DTclassifier" );
 
   addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", false ).toBool() );
+  savePointLayersCheckBox->setChecked( settings.value( "saveTempLayers", false ).toBool() );
 
   // classification settings
   QString algorithm = settings.value( "classificationAlg", "dtree" ).toString();
