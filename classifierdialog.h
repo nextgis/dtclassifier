@@ -55,7 +55,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     QgsVectorLayer* vectorLayerByName( const QString& name );
     QgsRasterLayer* rasterLayerByName( const QString& name );
 
-    QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform );
+    QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
 
     void mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY );
     void pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY );

@@ -125,6 +125,11 @@ void ClassifierDialog::doClassification()
   bandCount = inRaster->GetRasterCount();
   inRaster->GetGeoTransform( geotransform );
 
+  // create points from polygons
+  QgsVectorLayer *presence = pointsFromPolygons( layerPresence, geotransform, "pointsPresence" );
+  QgsMapLayerRegistry::instance()->addMapLayer( presence );
+  return;
+
   // create output file
   GDALDriver *driver;
   driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
@@ -376,20 +381,23 @@ QgsRasterLayer* ClassifierDialog::rasterLayerByName( const QString& name )
   return 0;
 }
 
-QgsVectroLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform )
+QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName )
 {
-  QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", "myPoints", "memory" );
+  QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", layerName, "memory" );
   QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
   QgsVectorDataProvider *provider = polygonLayer->dataProvider();
 
   // TODO: add attributes to provider
 
   QgsFeature feat;
-  QgsGeometry geom;
+  QgsGeometry* geom;
   QgsRectangle bbox;
-  QgsPoint pnt;
   double xMin, xMax, yMin, yMax;
   double startCol, startRow, endCol, endRow;
+  double x, y;
+  QgsPoint* pnt = new QgsPoint();
+  QgsFeature* ft;
+  QgsFeatureList lstFeatures;
 
   provider->rewind();
   provider->select();
@@ -397,24 +405,40 @@ QgsVectroLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
   while ( provider->nextFeature( feat ) )
   {
     geom = feat.geometry();
-    bbox = geom.boundingBox();
+    bbox = geom->boundingBox();
 
     xMin = bbox.xMinimum();
     xMax = bbox.xMaximum();
     yMin = bbox.yMinimum();
     yMax = bbox.yMaximum();
 
-    mapToPixel( xMin, yMax, geotransform, startRow, startCol);
-    mapToPixel( xMax, yMin, geotransform, endRow, endCol);
+    mapToPixel( xMin, yMax, geoTransform, startRow, startCol);
+    mapToPixel( xMax, yMin, geoTransform, endRow, endCol);
 
-    for ( int i = startRow; i < endRow; i++ )
+    qDebug() << "ROWS" << startRow << endRow;
+    qDebug() << "COLS" << startCol << endCol;
+
+    for ( int row = startRow; row < endRow + 1; row++ )
     {
-      for ( int j = startCol; i < endCol; j++ )
+      for ( int col = startCol; col < endCol + 1; col++ )
       {
         // create point and test
+        pixelToMap( row - 0.5, col - 0.5, geoTransform, x, y );
+        pnt->setX( x );
+        pnt->setY( y );
+        if ( geom->contains( pnt ) )
+        {
+          ft = new QgsFeature();
+          ft->setGeometry( QgsGeometry::fromPoint( *pnt ) );
+          lstFeatures.append( *ft );
+        }
       }
     }
   }
+  // write to memory layer
+  memoryProvider->addFeatures( lstFeatures );
+  pointsLayer->updateExtents();
+
   return pointsLayer;
 }
 
@@ -448,7 +472,7 @@ void ClassifierDialog::manageGui()
   {
     if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
     {
-      if ( qobject_cast<QgsVectorLayer *>( layer_it.value() )->geometryType() == QGis::Point )
+      if ( qobject_cast<QgsVectorLayer *>( layer_it.value() )->geometryType() == QGis::Polygon )
       {
         cmbPresenceLayer->addItem( layer_it.value()->name() );
         cmbAbsenceLayer->addItem( layer_it.value()->name() );
@@ -499,17 +523,20 @@ void ClassifierDialog::enableOrDisableOkButton()
 
 void ClassifierDialog::mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY )
 {
+  double oX, oY;
   if ( geoTransform[ 2 ] + geoTransform[ 4 ] == 0 )
   {
-    outX = (int)( mX - geoTransform[ 0 ] ) / geoTransform[ 1 ];
-    outY = (int)( mY - geoTransform[ 3 ] ) / geoTransform[ 5 ];
+    oX = ( mX - geoTransform[ 0 ] ) / geoTransform[ 1 ];
+    oY = ( mY - geoTransform[ 3 ] ) / geoTransform[ 5 ];
   }
   else
   {
     double invGeoTransform [ 6 ] = { 0, 0, 0, 0, 0, 0 };
     invertGeoTransform( geoTransform, invGeoTransform );
-    applyGeoTransform( mX, mY, invGeoTransform, outX, outY );
+    applyGeoTransform( mX, mY, invGeoTransform, oX, oY );
   }
+  outX = floor( oX + 0.5 );
+  outY = floor( oY + 0.5 );
 }
 
 void ClassifierDialog::pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY )
