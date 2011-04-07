@@ -39,6 +39,7 @@
 #include "qgsrasterlayer.h"
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
+#include "qgsvectorfilewriter.h"
 
 #include "classifierdialog.h"
 
@@ -109,10 +110,10 @@ void ClassifierDialog::doClassification()
   mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
   qDebug() << "InputFileName" << mInputFileName;
 
-  QgsVectorLayer *layerPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
-  QgsVectorLayer *layerAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
+  QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
+  QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
 
-  long featCount = layerAbsence->featureCount() + layerPresence->featureCount();
+  //long featCount = polygonAbsence->featureCount() + polygonPresence->featureCount();
 
   // read input raster metadata. We need them to create output raster
   GDALDataset *inRaster;
@@ -127,14 +128,54 @@ void ClassifierDialog::doClassification()
   inRaster->GetGeoTransform( geotransform );
 
   // create points from polygons
-  //QgsVectorLayer *presence = pointsFromPolygons( layerPresence, geotransform, "pointsPresence" );
+  QgsVectorLayer *pointsPresence = pointsFromPolygons( polygonPresence, geotransform, "pointsPresence" );
+  QgsVectorLayer *pointsAbsence = pointsFromPolygons( polygonAbsence, geotransform, "pointsAbsence" );
+
+  long featCount = pointsAbsence->featureCount() + pointsPresence->featureCount();
+  qDebug() << "Feature count" << featCount;
+
   //QgsMapLayerRegistry::instance()->addMapLayer( presence );
   //return;
 
   // save temporary layers on disk if requested
-  //if ( savePointLayersCheckBox.isChecked() )
-  //{
-  //}
+  if ( savePointLayersCheckBox->isChecked() )
+  {
+    QFileInfo fi( polygonPresence->source() );
+    QString vectorFilename;
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+
+    QgsCoordinateReferenceSystem destCRS;
+    destCRS = pointsPresence->crs();
+
+    QgsVectorFileWriter::WriterError error;
+    QString errorMessage;
+    error = QgsVectorFileWriter::writeAsVectorFormat(
+              pointsPresence, vectorFilename, "System", &destCRS,
+              "ESRI Shapefile",
+              false,
+              &errorMessage );
+
+    if ( error != QgsVectorFileWriter::NoError )
+    {
+      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
+    }
+
+    // -- absence layer
+    fi.setFile( polygonAbsence->source() );
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+    destCRS = pointsAbsence->crs();
+
+    error = QgsVectorFileWriter::writeAsVectorFormat(
+              pointsAbsence, vectorFilename, "System", &destCRS,
+              "ESRI Shapefile",
+              false,
+              &errorMessage );
+
+    if ( error != QgsVectorFileWriter::NoError )
+    {
+      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
+    }
+  }
 
   // create output file
   GDALDriver *driver;
@@ -161,7 +202,7 @@ void ClassifierDialog::doClassification()
   CvMat* data = cvCreateMat( featCount, bandCount, CV_32F );
   CvMat* responses = cvCreateMat( featCount, 1, CV_32F );
 
-  QgsVectorDataProvider *provider = layerPresence->dataProvider();
+  QgsVectorDataProvider *provider = pointsPresence->dataProvider();
   provider->rewind();
   provider->select();
 
@@ -184,7 +225,7 @@ void ClassifierDialog::doClassification()
     i++;
   }
 
-  provider = layerAbsence->dataProvider();
+  provider = pointsAbsence->dataProvider();
   provider->rewind();
   provider->select();
   while ( provider->nextFeature( feat ) )
