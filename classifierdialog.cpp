@@ -39,6 +39,7 @@
 #include "qgsrasterlayer.h"
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
+#include "qgsvectorfilewriter.h"
 
 #include "classifierdialog.h"
 
@@ -104,14 +105,15 @@ void ClassifierDialog::doClassification()
 
   settings.setValue( "discreteClasses", discreteLabelsCheckBox->isChecked() );
   settings.setValue( "addToCanvas", addToCanvasCheckBox->isChecked() );
+  settings.setValue( "saveTempLayers", savePointLayersCheckBox->isChecked() );
 
   mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
   qDebug() << "InputFileName" << mInputFileName;
 
-  QgsVectorLayer *layerPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
-  QgsVectorLayer *layerAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
+  QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
+  QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
 
-  long featCount = layerAbsence->featureCount() + layerPresence->featureCount();
+  //long featCount = polygonAbsence->featureCount() + polygonPresence->featureCount();
 
   // read input raster metadata. We need them to create output raster
   GDALDataset *inRaster;
@@ -124,6 +126,56 @@ void ClassifierDialog::doClassification()
   ySize = inRaster->GetRasterYSize();
   bandCount = inRaster->GetRasterCount();
   inRaster->GetGeoTransform( geotransform );
+
+  // create points from polygons
+  QgsVectorLayer *pointsPresence = pointsFromPolygons( polygonPresence, geotransform, "pointsPresence" );
+  QgsVectorLayer *pointsAbsence = pointsFromPolygons( polygonAbsence, geotransform, "pointsAbsence" );
+
+  long featCount = pointsAbsence->featureCount() + pointsPresence->featureCount();
+  qDebug() << "Feature count" << featCount;
+
+  //QgsMapLayerRegistry::instance()->addMapLayer( presence );
+  //return;
+
+  // save temporary layers on disk if requested
+  if ( savePointLayersCheckBox->isChecked() )
+  {
+    QFileInfo fi( polygonPresence->source() );
+    QString vectorFilename;
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+
+    QgsCoordinateReferenceSystem destCRS;
+    destCRS = pointsPresence->crs();
+
+    QgsVectorFileWriter::WriterError error;
+    QString errorMessage;
+    error = QgsVectorFileWriter::writeAsVectorFormat(
+              pointsPresence, vectorFilename, "System", &destCRS,
+              "ESRI Shapefile",
+              false,
+              &errorMessage );
+
+    if ( error != QgsVectorFileWriter::NoError )
+    {
+      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
+    }
+
+    // -- absence layer
+    fi.setFile( polygonAbsence->source() );
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+    destCRS = pointsAbsence->crs();
+
+    error = QgsVectorFileWriter::writeAsVectorFormat(
+              pointsAbsence, vectorFilename, "System", &destCRS,
+              "ESRI Shapefile",
+              false,
+              &errorMessage );
+
+    if ( error != QgsVectorFileWriter::NoError )
+    {
+      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
+    }
+  }
 
   // create output file
   GDALDriver *driver;
@@ -150,7 +202,7 @@ void ClassifierDialog::doClassification()
   CvMat* data = cvCreateMat( featCount, bandCount, CV_32F );
   CvMat* responses = cvCreateMat( featCount, 1, CV_32F );
 
-  QgsVectorDataProvider *provider = layerPresence->dataProvider();
+  QgsVectorDataProvider *provider = pointsPresence->dataProvider();
   provider->rewind();
   provider->select();
 
@@ -173,7 +225,7 @@ void ClassifierDialog::doClassification()
     i++;
   }
 
-  provider = layerAbsence->dataProvider();
+  provider = pointsAbsence->dataProvider();
   provider->rewind();
   provider->select();
   while ( provider->nextFeature( feat ) )
@@ -376,12 +428,75 @@ QgsRasterLayer* ClassifierDialog::rasterLayerByName( const QString& name )
   return 0;
 }
 
+QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName )
+{
+  QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", layerName, "memory" );
+  QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
+  QgsVectorDataProvider *provider = polygonLayer->dataProvider();
+
+  // TODO: add attributes to provider
+
+  QgsFeature feat;
+  QgsGeometry* geom;
+  QgsRectangle bbox;
+  double xMin, xMax, yMin, yMax;
+  double startCol, startRow, endCol, endRow;
+  double x, y;
+  QgsPoint* pnt = new QgsPoint();
+  QgsFeature* ft;
+  QgsFeatureList lstFeatures;
+
+  provider->rewind();
+  provider->select();
+
+  while ( provider->nextFeature( feat ) )
+  {
+    geom = feat.geometry();
+    bbox = geom->boundingBox();
+
+    xMin = bbox.xMinimum();
+    xMax = bbox.xMaximum();
+    yMin = bbox.yMinimum();
+    yMax = bbox.yMaximum();
+
+    mapToPixel( xMin, yMax, geoTransform, startRow, startCol);
+    mapToPixel( xMax, yMin, geoTransform, endRow, endCol);
+
+    //qDebug() << "ROWS" << startRow << endRow;
+    //qDebug() << "COLS" << startCol << endCol;
+
+    for ( int row = startRow; row < endRow + 1; row++ )
+    {
+      for ( int col = startCol; col < endCol + 1; col++ )
+      {
+        // create point and test
+        pixelToMap( row - 0.5, col - 0.5, geoTransform, x, y );
+        pnt->setX( x );
+        pnt->setY( y );
+        if ( geom->contains( pnt ) )
+        {
+          ft = new QgsFeature();
+          ft->setGeometry( QgsGeometry::fromPoint( *pnt ) );
+          lstFeatures.append( *ft );
+        }
+      }
+    }
+  }
+  // write to memory layer
+  memoryProvider->addFeatures( lstFeatures );
+  pointsLayer->updateExtents();
+
+  return pointsLayer;
+}
+
+
 void ClassifierDialog::manageGui()
 {
   // restore ui state from settings
   QSettings settings( "NextGIS", "DTclassifier" );
 
   addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", false ).toBool() );
+  savePointLayersCheckBox->setChecked( settings.value( "saveTempLayers", false ).toBool() );
 
   // classification settings
   QString algorithm = settings.value( "classificationAlg", "dtree" ).toString();
@@ -405,7 +520,7 @@ void ClassifierDialog::manageGui()
   {
     if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
     {
-      if ( qobject_cast<QgsVectorLayer *>( layer_it.value() )->geometryType() == QGis::Point )
+      if ( qobject_cast<QgsVectorLayer *>( layer_it.value() )->geometryType() == QGis::Polygon )
       {
         cmbPresenceLayer->addItem( layer_it.value()->name() );
         cmbAbsenceLayer->addItem( layer_it.value()->name() );
@@ -424,7 +539,6 @@ void ClassifierDialog::manageGui()
 
 void ClassifierDialog::toggleCheckBoxState( bool checked )
 {
-  //if ( rbDecisionTree->isChecked() )
   if ( checked )
   {
     discreteLabelsCheckBox->setEnabled( true );
@@ -438,7 +552,7 @@ void ClassifierDialog::toggleCheckBoxState( bool checked )
 void ClassifierDialog::updateInputFileName()
 {
   mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
-  qDebug() << "InputFileName" << mInputFileName;
+  //qDebug() << "InputFileName" << mInputFileName;
 }
 
 void ClassifierDialog::enableOrDisableOkButton()
@@ -453,19 +567,24 @@ void ClassifierDialog::enableOrDisableOkButton()
   buttonBox->button( QDialogButtonBox::Ok )->setEnabled( enabled );
 }
 
+// -------------- Coordinate transform routines ------------------------
+
 void ClassifierDialog::mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY )
 {
+  double oX, oY;
   if ( geoTransform[ 2 ] + geoTransform[ 4 ] == 0 )
   {
-    outX = (int)( mX - geoTransform[ 0 ] ) / geoTransform[ 1 ];
-    outY = (int)( mY - geoTransform[ 3 ] ) / geoTransform[ 5 ];
+    oX = ( mX - geoTransform[ 0 ] ) / geoTransform[ 1 ];
+    oY = ( mY - geoTransform[ 3 ] ) / geoTransform[ 5 ];
   }
   else
   {
     double invGeoTransform [ 6 ] = { 0, 0, 0, 0, 0, 0 };
     invertGeoTransform( geoTransform, invGeoTransform );
-    applyGeoTransform( mX, mY, invGeoTransform, outX, outY );
+    applyGeoTransform( mX, mY, invGeoTransform, oX, oY );
   }
+  outX = floor( oX + 0.5 );
+  outY = floor( oY + 0.5 );
 }
 
 void ClassifierDialog::pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY )
