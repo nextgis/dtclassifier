@@ -28,7 +28,7 @@
 
 static const QString _name = QObject::tr( "DTclassifier" );
 static const QString _description = QObject::tr( "Raster classification using decision tree" );
-static const QString _version = QObject::tr( "Version 0.1.0" );
+static const QString _version = QObject::tr( "Version 0.2.0" );
 static const QString _icon = ":/classifier/icons/classifier.png";
 
 Classifier::Classifier( QgisInterface* iface )
