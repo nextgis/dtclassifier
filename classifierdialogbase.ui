@@ -135,7 +135,7 @@
       <item>
        <widget class="QRadioButton" name="rbRandomTrees">
         <property name="text">
-         <string>Use random trees</string>
+         <string>Use random forest</string>
         </property>
        </widget>
       </item>
