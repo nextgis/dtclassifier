@@ -567,6 +567,13 @@ void ClassifierDialog::enableOrDisableOkButton()
   buttonBox->button( QDialogButtonBox::Ok )->setEnabled( enabled );
 }
 
+void ClassifierDialog::applyStyle( QgsRasterLayer* layer )
+{
+  // use ColorRampShader
+
+  // make 0 transparent
+}
+
 // -------------- Coordinate transform routines ------------------------
 
 void ClassifierDialog::mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY )
