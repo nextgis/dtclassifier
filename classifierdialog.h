@@ -62,7 +62,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void applyGeoTransform( double inX, double inY, double* geoTransform, double& outX, double& outY );
     void invertGeoTransform( double* inGeoTransform, double* outGeoTransform);
 
-    void applyStyle( QgsRasterLayer* layer );
+    void applyRasterStyle( QgsRasterLayer* layer );
 
     void manageGui();
     void enableOrDisableOkButton();
