@@ -331,7 +331,6 @@ void ClassifierDialog::doClassification()
     QgsRasterLayer* newLayer;
     newLayer = new QgsRasterLayer( mOutputFileName, QFileInfo( mOutputFileName ).baseName() );
     applyRasterStyle( newLayer );
-    //newLayer->rasterTransparency()->initializeTransparentPixelList( 0.0 );
     QgsMapLayerRegistry::instance()->addMapLayer( newLayer );
   }
 }
@@ -572,8 +571,6 @@ void ClassifierDialog::enableOrDisableOkButton()
 
 void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
 {
-  qDebug() << "Drawing style" << layer->drawingStyle();
-  qDebug() << "Shader" << layer->colorShadingAlgorithm();
   // draw as singleBand image with ColorRampShader
   layer->setDrawingStyle( QgsRasterLayer::SingleBandPseudoColor );
   layer->setColorShadingAlgorithm( QgsRasterLayer::ColorRampShader );
@@ -581,15 +578,6 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
   // create color ramp
   QgsColorRampShader* myRasterShaderFunction = ( QgsColorRampShader* )layer->rasterShader()->rasterShaderFunction();
   QList<QgsColorRampShader::ColorRampItem> myColorRampItems;
-  //~ for ( int i = 0; i < 2; ++i)
-  //~ {
-    //~ QgsColorRampShader::ColorRampItem myNewColorRampItem;
-    //~ myNewColorRampItem.value = i;
-    //~ myNewColorRampItem.color = QColor( i + 4 );
-    //~ myNewColorRampItem.label = "";
-    //~ 
-    //~ myColorRampItems.append( myNewColorRampItem );
-  //~ }
 
   QgsColorRampShader::ColorRampItem absenceItem, presenceItem;
   absenceItem.value = 0;
@@ -608,7 +596,6 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
 
   // make 0 transparent
   layer->rasterTransparency()->initializeTransparentPixelList( 0.0 );
-  qDebug() << "TRANSPARENCY APPLIED";
 }
 
 // -------------- Coordinate transform routines ------------------------
