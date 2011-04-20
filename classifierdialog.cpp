@@ -23,8 +23,9 @@
 #include <QMessageBox>
 #include <QSettings>
 #include <QColor>
+#include <QApplication>
 
-#include <math.h>
+#include <cmath>
 
 #include "gdal.h"
 #include "gdal_priv.h"
@@ -56,7 +57,8 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
   GDALAllRegister();
 
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
-  connect( cmbInputRaster, SIGNAL( currentIndexChanged( const QString& ) ), this, SLOT( updateInputFileName() ) );
+  connect( cmbFirstRaster, SIGNAL( currentIndexChanged( const QString& ) ), this, SLOT( updateFirstFileName() ) );
+  connect( cmbSecondRaster, SIGNAL( currentIndexChanged( const QString& ) ), this, SLOT( updateSecondFileName() ) );
   connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleCheckBoxState( bool ) ) );
 
   // use Ok button for starting classification
@@ -108,222 +110,19 @@ void ClassifierDialog::doClassification()
   settings.setValue( "addToCanvas", addToCanvasCheckBox->isChecked() );
   settings.setValue( "saveTempLayers", savePointLayersCheckBox->isChecked() );
 
-  mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
-  qDebug() << "InputFileName" << mInputFileName;
+  mFirstRaster = rasterLayerByName( cmbFirstRaster->currentText() )->source();
+  qDebug() << "First raster" << mFirstRaster;
+  mSecondRaster = rasterLayerByName( cmbSecondRaster->currentText() )->source();
+  qDebug() << "Second raster" << mSecondRaster;
 
-  QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
-  QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
-
-  //long featCount = polygonAbsence->featureCount() + polygonPresence->featureCount();
-
-  // read input raster metadata. We need them to create output raster
-  GDALDataset *inRaster;
-  inRaster = (GDALDataset *) GDALOpen( mInputFileName.toUtf8(), GA_ReadOnly );
-  qDebug() << "input raster opened";
-
-  double geotransform[6];
-  int xSize, ySize, bandCount;
-  xSize = inRaster->GetRasterXSize();
-  ySize = inRaster->GetRasterYSize();
-  bandCount = inRaster->GetRasterCount();
-  inRaster->GetGeoTransform( geotransform );
-
-  // create points from polygons
-  QgsVectorLayer *pointsPresence = pointsFromPolygons( polygonPresence, geotransform, "pointsPresence" );
-  QgsVectorLayer *pointsAbsence = pointsFromPolygons( polygonAbsence, geotransform, "pointsAbsence" );
-
-  long featCount = pointsAbsence->featureCount() + pointsPresence->featureCount();
-  qDebug() << "Feature count" << featCount;
-
-  //QgsMapLayerRegistry::instance()->addMapLayer( presence );
-  //return;
-
-  // save temporary layers on disk if requested
-  if ( savePointLayersCheckBox->isChecked() )
+  if ( !twoRastersCheck->isChecked() )
   {
-    QFileInfo fi( polygonPresence->source() );
-    QString vectorFilename;
-    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
-
-    QgsCoordinateReferenceSystem destCRS;
-    destCRS = pointsPresence->crs();
-
-    QgsVectorFileWriter::WriterError error;
-    QString errorMessage;
-    error = QgsVectorFileWriter::writeAsVectorFormat(
-              pointsPresence, vectorFilename, "System", &destCRS,
-              "ESRI Shapefile",
-              false,
-              &errorMessage );
-
-    if ( error != QgsVectorFileWriter::NoError )
-    {
-      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
-    }
-
-    // -- absence layer
-    fi.setFile( polygonAbsence->source() );
-    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
-    destCRS = pointsAbsence->crs();
-
-    error = QgsVectorFileWriter::writeAsVectorFormat(
-              pointsAbsence, vectorFilename, "System", &destCRS,
-              "ESRI Shapefile",
-              false,
-              &errorMessage );
-
-    if ( error != QgsVectorFileWriter::NoError )
-    {
-      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
-    }
+    singleRasterClassification();
   }
-
-  // create output file
-  GDALDriver *driver;
-  driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
-  GDALDataset *outRaster;
-  outRaster = driver->Create( mOutputFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
-  outRaster->SetGeoTransform( geotransform );
-  outRaster->SetProjection( inRaster->GetProjectionRef() );
-  GDALRasterBand *outBand;
-  outBand = outRaster->GetRasterBand( 1 );
-  qDebug() << "output raster created";
-
-  // collect train data
-  double mapX, mapY;
-  double pixX, pixY;
-  int row, col;
-  int i = 0;
-
-  QgsFeature feat;
-  QgsPoint pnt;
-
-  QVector<float> rasterData( xSize * bandCount );
-
-  CvMat* data = cvCreateMat( featCount, bandCount, CV_32F );
-  CvMat* responses = cvCreateMat( featCount, 1, CV_32F );
-
-  QgsVectorDataProvider *provider = pointsPresence->dataProvider();
-  provider->rewind();
-  provider->select();
-
-  while ( provider->nextFeature( feat ) )
+  else
   {
-    pnt = feat.geometry()->asPoint();
-    mapX = pnt.x();
-    mapY = pnt.y();
-    mapToPixel( mapX, mapY, geotransform, pixX, pixY);
-    col = floor( pixX );
-    row = floor( pixY );
-    inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
-    cvmSet( data, i, 0, rasterData[0] );
-    cvmSet( data, i, 1, rasterData[1] );
-    cvmSet( data, i, 2, rasterData[2] );
-    cvmSet( data, i, 3, rasterData[3] );
-    cvmSet( data, i, 4, rasterData[4] );
-    cvmSet( data, i, 5, rasterData[5] );
-    cvmSet( responses, i, 0, 1 );
-    i++;
+    // two rasters
   }
-
-  provider = pointsAbsence->dataProvider();
-  provider->rewind();
-  provider->select();
-  while ( provider->nextFeature( feat ) )
-  {
-    pnt = feat.geometry()->asPoint();
-    mapX = pnt.x();
-    mapY = pnt.y();
-    mapToPixel( mapX, mapY, geotransform, pixX, pixY);
-    col = floor( pixX );
-    row = floor( pixY );
-    inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
-    cvmSet( data, i, 0, rasterData[0] );
-    cvmSet( data, i, 1, rasterData[1] );
-    cvmSet( data, i, 2, rasterData[2] );
-    cvmSet( data, i, 3, rasterData[3] );
-    cvmSet( data, i, 4, rasterData[4] );
-    cvmSet( data, i, 5, rasterData[5] );
-    cvmSet( responses, i, 0, 0 );
-    i++;
-  }
-
-  CvDTree* dtree = new CvDTree();
-  CvRTrees* rtree = new CvRTrees();
-  // use decision tree
-  if ( rbDecisionTree->isChecked() )
-  {
-    // build decision tree classifier
-    if ( discreteLabelsCheckBox->isChecked() )
-    {
-      CvMat* var_type;
-      var_type = cvCreateMat( data->cols + 1, 1, CV_8U );
-      cvSet( var_type, cvScalarAll(CV_VAR_CATEGORICAL) );
-      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type );
-      cvReleaseMat( &var_type );
-    }
-    else
-    {
-      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0 );
-    }
-
-    QFileInfo fi( mOutputFileName );
-    QString treeFileName;
-    treeFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_tree.yaml";
-
-    dtree->save( treeFileName.toUtf8(), "MyTree" );
-  }
-  else // or random trees
-  {
-    // build random trees classifier
-    rtree->train( data, CV_ROW_SAMPLE, responses );
-  }
-
-  cvReleaseMat( &data );
-  cvReleaseMat( &responses );
-
-  // classify raster using tree
-  CvMat* sample = cvCreateMat( bandCount, 1, CV_32F );
-  QVector<float> outData( xSize );
-
-  progressBar->setRange( 0, ySize );
-  progressBar->setValue( 0 );
-
-  for ( int row = 0; row < ySize; ++row )
-  {
-    inRaster->RasterIO( GF_Read, 0, row, xSize, 1, (void *)rasterData.data(), xSize, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
-    for ( int col = 0; col < xSize; ++col )
-    {
-      cvmSet( sample, 0, 0, rasterData[ col ] );
-      cvmSet( sample, 1, 0, rasterData[ xSize + col ] );
-      cvmSet( sample, 2, 0, rasterData[ xSize*2 + col ] );
-      cvmSet( sample, 3, 0, rasterData[ xSize*3 + col ] );
-      cvmSet( sample, 4, 0, rasterData[ xSize*4 + col ] );
-      cvmSet( sample, 5, 0, rasterData[ xSize*5 + col ] );
-
-      if ( rbDecisionTree->isChecked() )
-      {
-        outData[ col ] = dtree->predict( sample )->value;
-      }
-      else
-      {
-        outData[ col ] = rtree->predict( sample );
-      }
-    }
-    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0 , 0 );
-    progressBar->setValue( progressBar->value() + 1 );
-  }
-
-  // cleanup
-  progressBar->setValue( 0 );
-  cvReleaseMat( &sample );
-  dtree->clear();
-  delete dtree;
-  rtree->clear();
-  delete rtree;
-
-  GDALClose( (GDALDatasetH) inRaster );
-  GDALClose( (GDALDatasetH) outRaster );
 
   // add classified raster to map canvas if requested
   if ( addToCanvasCheckBox->isChecked() )
@@ -466,6 +265,9 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
 
     //qDebug() << "ROWS" << startRow << endRow;
     //qDebug() << "COLS" << startCol << endCol;
+    progressBar->setRange( 0, ( endRow - startRow ) * ( endCol - startCol ) );
+    progressBar->setValue( 0 );
+    progressBar->setFormat( "Generate points: %p%" );
 
     for ( int row = startRow; row < endRow + 1; row++ )
     {
@@ -482,15 +284,518 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
           lstFeatures.append( *ft );
         }
       }
+      // update progress and process messages
+      progressBar->setValue( progressBar->value() + 1 );
+      QApplication::processEvents();
     }
   }
   // write to memory layer
   memoryProvider->addFeatures( lstFeatures );
   pointsLayer->updateExtents();
 
+  progressBar->setFormat( "%p%" );
+  progressBar->setRange( 0, 100 );
+  progressBar->setValue( 0 );
+
   return pointsLayer;
 }
 
+void ClassifierDialog::singleRasterClassification()
+{
+  QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
+  QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
+
+  // read input raster metadata. We need them to create output raster
+  GDALDataset *inRaster;
+  inRaster = (GDALDataset *) GDALOpen( mFirstRaster.toUtf8(), GA_ReadOnly );
+  qDebug() << "input raster opened";
+
+  double geotransform[6];
+  int xSize, ySize, bandCount;
+  xSize = inRaster->GetRasterXSize();
+  ySize = inRaster->GetRasterYSize();
+  bandCount = inRaster->GetRasterCount();
+  inRaster->GetGeoTransform( geotransform );
+
+  // create points from polygons
+  QgsVectorLayer *pointsPresence = pointsFromPolygons( polygonPresence, geotransform, "pointsPresence" );
+  QgsVectorLayer *pointsAbsence = pointsFromPolygons( polygonAbsence, geotransform, "pointsAbsence" );
+
+  long featCount = pointsAbsence->featureCount() + pointsPresence->featureCount();
+  qDebug() << "Feature count" << featCount;
+
+  // save temporary layers on disk if requested
+  if ( savePointLayersCheckBox->isChecked() )
+  {
+    QFileInfo fi( polygonPresence->source() );
+    QString vectorFilename;
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+
+    QgsCoordinateReferenceSystem destCRS;
+    destCRS = pointsPresence->crs();
+
+    QgsVectorFileWriter::WriterError error;
+    QString errorMessage;
+    error = QgsVectorFileWriter::writeAsVectorFormat(
+              pointsPresence, vectorFilename, "System", &destCRS,
+              "ESRI Shapefile",
+              false,
+              &errorMessage );
+
+    if ( error != QgsVectorFileWriter::NoError )
+    {
+      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
+    }
+
+    // -- absence layer
+    fi.setFile( polygonAbsence->source() );
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+    destCRS = pointsAbsence->crs();
+
+    error = QgsVectorFileWriter::writeAsVectorFormat(
+              pointsAbsence, vectorFilename, "System", &destCRS,
+              "ESRI Shapefile",
+              false,
+              &errorMessage );
+
+    if ( error != QgsVectorFileWriter::NoError )
+    {
+      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
+    }
+  }
+
+  // create output file
+  GDALDriver *driver;
+  driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
+  GDALDataset *outRaster;
+  outRaster = driver->Create( mOutputFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
+  outRaster->SetGeoTransform( geotransform );
+  outRaster->SetProjection( inRaster->GetProjectionRef() );
+  qDebug() << "output raster created";
+
+  // collect train data
+  double mapX, mapY;
+  double pixX, pixY;
+  int row, col;
+  int i = 0;
+
+  QgsFeature feat;
+  QgsPoint pnt;
+
+  QVector<float> rasterData( xSize * bandCount );
+
+  CvMat* data = cvCreateMat( featCount, bandCount, CV_32F );
+  CvMat* responses = cvCreateMat( featCount, 1, CV_32F );
+
+  QgsVectorDataProvider *provider = pointsPresence->dataProvider();
+  provider->rewind();
+  provider->select();
+  
+  progressBar->setValue( 0 );
+  progressBar->setFormat( "Collect train data: %p%" );
+  progressBar->setRange( 0, provider->featureCount() );
+
+  while ( provider->nextFeature( feat ) )
+  {
+    pnt = feat.geometry()->asPoint();
+    mapX = pnt.x();
+    mapY = pnt.y();
+    mapToPixel( mapX, mapY, geotransform, pixX, pixY);
+    col = floor( pixX );
+    row = floor( pixY );
+    inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
+    for (int j = 0; j < bandCount; j++)
+    {
+      cvmSet( data, i, j, rasterData[ j ] );
+    }
+    //~ cvmSet( data, i, 0, rasterData[0] );
+    //~ cvmSet( data, i, 1, rasterData[1] );
+    //~ cvmSet( data, i, 2, rasterData[2] );
+    //~ cvmSet( data, i, 3, rasterData[3] );
+    //~ cvmSet( data, i, 4, rasterData[4] );
+    //~ cvmSet( data, i, 5, rasterData[5] );
+    cvmSet( responses, i, 0, 1 );
+    i++;
+    
+    progressBar->setValue( progressBar->value() + 1 );
+    QApplication::processEvents();
+  }
+
+  provider = pointsAbsence->dataProvider();
+  provider->rewind();
+  provider->select();
+  
+  progressBar->setRange( 0, provider->featureCount() );
+
+  while ( provider->nextFeature( feat ) )
+  {
+    pnt = feat.geometry()->asPoint();
+    mapX = pnt.x();
+    mapY = pnt.y();
+    mapToPixel( mapX, mapY, geotransform, pixX, pixY);
+    col = floor( pixX );
+    row = floor( pixY );
+    inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
+    for (int j = 0; j < bandCount; j++)
+    {
+      cvmSet( data, i, j, rasterData[ j ] );
+    }
+    //~ cvmSet( data, i, 0, rasterData[0] );
+    //~ cvmSet( data, i, 1, rasterData[1] );
+    //~ cvmSet( data, i, 2, rasterData[2] );
+    //~ cvmSet( data, i, 3, rasterData[3] );
+    //~ cvmSet( data, i, 4, rasterData[4] );
+    //~ cvmSet( data, i, 5, rasterData[5] );
+    cvmSet( responses, i, 0, 0 );
+    i++;
+
+    progressBar->setValue( progressBar->value() + 1 );
+    QApplication::processEvents();
+  }
+  
+  progressBar->setValue( 0 );
+  progressBar->setFormat( "%p%" );
+  progressBar->setRange( 0, 100 );
+
+  CvDTree* dtree = new CvDTree();
+  CvRTrees* rtree = new CvRTrees();
+  // use decision tree
+  if ( rbDecisionTree->isChecked() )
+  {
+    // build decision tree classifier
+    if ( discreteLabelsCheckBox->isChecked() )
+    {
+      CvMat* var_type;
+      var_type = cvCreateMat( data->cols + 1, 1, CV_8U );
+      cvSet( var_type, cvScalarAll(CV_VAR_CATEGORICAL) );
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type );
+      cvReleaseMat( &var_type );
+    }
+    else
+    {
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0 );
+    }
+
+    QFileInfo fi( mOutputFileName );
+    QString treeFileName;
+    treeFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_tree.yaml";
+
+    dtree->save( treeFileName.toUtf8(), "MyTree" );
+  }
+  else // or random trees
+  {
+    // build random trees classifier
+    rtree->train( data, CV_ROW_SAMPLE, responses );
+  }
+
+  cvReleaseMat( &data );
+  cvReleaseMat( &responses );
+
+  // classify raster using tree
+  CvMat* sample = cvCreateMat( bandCount, 1, CV_32F );
+  QVector<float> outData( xSize );
+
+  progressBar->setFormat( "Classification: %p%" );
+  progressBar->setRange( 0, ySize );
+  progressBar->setValue( 0 );
+
+  for ( int row = 0; row < ySize; ++row )
+  {
+    inRaster->RasterIO( GF_Read, 0, row, xSize, 1, (void *)rasterData.data(), xSize, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
+    for ( int col = 0; col < xSize; ++col )
+    {
+      for (int j = 0; j < bandCount; j++)
+      {
+        cvmSet( sample, j, 0, rasterData[ xSize * j + col ] );
+      }
+      //~ cvmSet( sample, 0, 0, rasterData[ col ] );
+      //~ cvmSet( sample, 1, 0, rasterData[ xSize + col ] );
+      //~ cvmSet( sample, 2, 0, rasterData[ xSize*2 + col ] );
+      //~ cvmSet( sample, 3, 0, rasterData[ xSize*3 + col ] );
+      //~ cvmSet( sample, 4, 0, rasterData[ xSize*4 + col ] );
+      //~ cvmSet( sample, 5, 0, rasterData[ xSize*5 + col ] );
+
+      if ( rbDecisionTree->isChecked() )
+      {
+        outData[ col ] = dtree->predict( sample )->value;
+      }
+      else
+      {
+        outData[ col ] = rtree->predict( sample );
+      }
+    }
+    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0 , 0 );
+    progressBar->setValue( progressBar->value() + 1 );
+    QApplication::processEvents();
+  }
+
+  // cleanup
+  progressBar->setFormat( "%p%" );
+  progressBar->setRange( 0, 100 );
+  progressBar->setValue( 0 );
+  cvReleaseMat( &sample );
+  dtree->clear();
+  delete dtree;
+  rtree->clear();
+  delete rtree;
+
+  GDALClose( (GDALDatasetH) inRaster );
+  GDALClose( (GDALDatasetH) outRaster );
+}
+
+void ClassifierDialog::twoRastersClassification()
+{
+  QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
+  QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
+
+  // read input raster metadata. We need them to create output raster
+  GDALDataset* firstRaster;
+  GDALDataset* secondRaster;
+  firstRaster = (GDALDataset *) GDALOpen( mFirstRaster.toUtf8(), GA_ReadOnly );
+  secondRaster = (GDALDataset *) GDALOpen( mSecondRaster.toUtf8(), GA_ReadOnly );
+  qDebug() << "input rasters opened";
+
+  double geotransform[6];
+  int xSize, ySize, bandCountFirst, bandCountSecond;
+  xSize = firstRaster->GetRasterXSize();
+  ySize = firstRaster->GetRasterYSize();
+  firstRaster->GetGeoTransform( geotransform );
+
+  bandCountFirst = firstRaster->GetRasterCount();
+  bandCountSecond = secondRaster->GetRasterCount();
+
+  // create points from polygons
+  QgsVectorLayer *pointsPresence = pointsFromPolygons( polygonPresence, geotransform, "pointsPresence" );
+  QgsVectorLayer *pointsAbsence = pointsFromPolygons( polygonAbsence, geotransform, "pointsAbsence" );
+
+  long featCount = pointsAbsence->featureCount() + pointsPresence->featureCount();
+  qDebug() << "Feature count" << featCount;
+
+  // save temporary layers on disk if requested
+  if ( savePointLayersCheckBox->isChecked() )
+  {
+    QFileInfo fi( polygonPresence->source() );
+    QString vectorFilename;
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+
+    QgsCoordinateReferenceSystem destCRS;
+    destCRS = pointsPresence->crs();
+
+    QgsVectorFileWriter::WriterError error;
+    QString errorMessage;
+    error = QgsVectorFileWriter::writeAsVectorFormat(
+              pointsPresence, vectorFilename, "System", &destCRS,
+              "ESRI Shapefile",
+              false,
+              &errorMessage );
+
+    if ( error != QgsVectorFileWriter::NoError )
+    {
+      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
+    }
+
+    // -- absence layer
+    fi.setFile( polygonAbsence->source() );
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+    destCRS = pointsAbsence->crs();
+
+    error = QgsVectorFileWriter::writeAsVectorFormat(
+              pointsAbsence, vectorFilename, "System", &destCRS,
+              "ESRI Shapefile",
+              false,
+              &errorMessage );
+
+    if ( error != QgsVectorFileWriter::NoError )
+    {
+      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
+    }
+  }
+
+  // create output file
+  GDALDriver *driver;
+  driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
+  GDALDataset *outRaster;
+  outRaster = driver->Create( mOutputFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
+  outRaster->SetGeoTransform( geotransform );
+  outRaster->SetProjection( firstRaster->GetProjectionRef() );
+  qDebug() << "output raster created";
+
+  // collect train data
+  double mapX, mapY;
+  double pixX, pixY;
+  int row, col;
+  int i = 0;
+
+  QgsFeature feat;
+  QgsPoint pnt;
+
+  QVector<float> rasterDataFirst( xSize * bandCountFirst );
+  QVector<float> rasterDataSecond( xSize * bandCountSecond );
+
+  CvMat* data = cvCreateMat( featCount, bandCountFirst + bandCountSecond, CV_32F );
+  CvMat* responses = cvCreateMat( featCount, 1, CV_32F );
+
+  QgsVectorDataProvider *provider = pointsPresence->dataProvider();
+  provider->rewind();
+  provider->select();
+  
+  progressBar->setValue( 0 );
+  progressBar->setFormat( "Collect train data: %p%" );
+  progressBar->setRange( 0, provider->featureCount() );
+  
+  while ( provider->nextFeature( feat ) )
+  {
+    pnt = feat.geometry()->asPoint();
+    mapX = pnt.x();
+    mapY = pnt.y();
+    mapToPixel( mapX, mapY, geotransform, pixX, pixY);
+    col = floor( pixX );
+    row = floor( pixY );
+    firstRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterDataFirst.data(), 1, 1, GDT_Float32, bandCountFirst, 0, 0, 0 , 0 );
+    secondRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterDataSecond.data(), 1, 1, GDT_Float32, bandCountSecond, 0, 0, 0 , 0 );
+    for ( int j = 0; j < bandCountFirst; j++ )
+    {
+      cvmSet( data, i, j, rasterDataFirst[ j ] );
+    }
+    for ( int j = bandCountFirst, k = 0; j < bandCountFirst + bandCountSecond; j++, k++ )
+    {
+      cvmSet( data, i, j, rasterDataSecond[ k ] );
+    }
+    
+    cvmSet( responses, i, 0, 1 );
+    i++;
+    
+    progressBar->setValue( progressBar->value() + 1 );
+    QApplication::processEvents();
+  }
+
+  provider = pointsAbsence->dataProvider();
+  provider->rewind();
+  provider->select();
+  
+  progressBar->setRange( 0, provider->featureCount() );
+
+  while ( provider->nextFeature( feat ) )
+  {
+    pnt = feat.geometry()->asPoint();
+    mapX = pnt.x();
+    mapY = pnt.y();
+    mapToPixel( mapX, mapY, geotransform, pixX, pixY);
+    col = floor( pixX );
+    row = floor( pixY );
+    firstRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterDataFirst.data(), 1, 1, GDT_Float32, bandCountFirst, 0, 0, 0 , 0 );
+    secondRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterDataSecond.data(), 1, 1, GDT_Float32, bandCountSecond, 0, 0, 0 , 0 );
+    for ( int j = 0; j < bandCountFirst; j++ )
+    {
+      cvmSet( data, i, j, rasterDataFirst[ j ] );
+    }
+    for ( int j = bandCountFirst, k = 0; j < bandCountFirst + bandCountSecond; j++, k++ )
+    {
+      cvmSet( data, i, j, rasterDataSecond[ k ] );
+    }
+
+    cvmSet( responses, i, 0, 0 );
+    i++;
+
+    progressBar->setValue( progressBar->value() + 1 );
+    QApplication::processEvents();
+  }
+  
+  progressBar->setValue( 0 );
+  progressBar->setFormat( "%p%" );
+  progressBar->setRange( 0, 100 );
+
+  CvDTree* dtree = new CvDTree();
+  CvRTrees* rtree = new CvRTrees();
+  // use decision tree
+  if ( rbDecisionTree->isChecked() )
+  {
+    // build decision tree classifier
+    if ( discreteLabelsCheckBox->isChecked() )
+    {
+      CvMat* var_type;
+      var_type = cvCreateMat( data->cols + 1, 1, CV_8U );
+      cvSet( var_type, cvScalarAll(CV_VAR_CATEGORICAL) );
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type );
+      cvReleaseMat( &var_type );
+    }
+    else
+    {
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0 );
+    }
+
+    QFileInfo fi( mOutputFileName );
+    QString treeFileName;
+    treeFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_tree.yaml";
+
+    dtree->save( treeFileName.toUtf8(), "MyTree" );
+  }
+  else // or random trees
+  {
+    // build random trees classifier
+    rtree->train( data, CV_ROW_SAMPLE, responses );
+  }
+
+  cvReleaseMat( &data );
+  cvReleaseMat( &responses );
+
+  // classify raster using tree
+  CvMat* sample = cvCreateMat( bandCountFirst, 1, CV_32F );
+  QVector<float> outData( xSize );
+
+  progressBar->setFormat( "Classification: %p%" );
+  progressBar->setRange( 0, ySize );
+  progressBar->setValue( 0 );
+
+  for ( int row = 0; row < ySize; ++row )
+  {
+    firstRaster->RasterIO( GF_Read, 0, row, xSize, 1, (void *)rasterDataFirst.data(), xSize, 1, GDT_Float32, bandCountFirst, 0, 0, 0 , 0 );
+    secondRaster->RasterIO( GF_Read, 0, row, xSize, 1, (void *)rasterDataSecond.data(), xSize, 1, GDT_Float32, bandCountSecond, 0, 0, 0 , 0 );
+    for ( int col = 0; col < xSize; ++col )
+    {
+      for (int j = 0; j < bandCountFirst; j++)
+      {
+        cvmSet( sample, j, 0, rasterDataFirst[ xSize * j + col ] );
+      }
+      for (int j = bandCountFirst, k = 0; j < bandCountFirst + bandCountSecond; j++, k++)
+      {
+        cvmSet( sample, j, 0, rasterDataSecond[ xSize * k + col ] );
+      }
+      //~ cvmSet( sample, 0, 0, rasterDataFirst[ col ] );
+      //~ cvmSet( sample, 1, 0, rasterDataFirst[ xSize + col ] );
+      //~ cvmSet( sample, 2, 0, rasterDataFirst[ xSize*2 + col ] );
+      //~ cvmSet( sample, 3, 0, rasterDataFirst[ xSize*3 + col ] );
+      //~ cvmSet( sample, 4, 0, rasterDataFirst[ xSize*4 + col ] );
+      //~ cvmSet( sample, 5, 0, rasterDataFirst[ xSize*5 + col ] );
+
+      if ( rbDecisionTree->isChecked() )
+      {
+        outData[ col ] = dtree->predict( sample )->value;
+      }
+      else
+      {
+        outData[ col ] = rtree->predict( sample );
+      }
+    }
+    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0 , 0 );
+    progressBar->setValue( progressBar->value() + 1 );
+    QApplication::processEvents();
+  }
+
+  // cleanup
+  progressBar->setFormat( "%p%" );
+  progressBar->setRange( 0, 100 );
+  progressBar->setValue( 0 );
+  cvReleaseMat( &sample );
+  dtree->clear();
+  delete dtree;
+  rtree->clear();
+  delete rtree;
+
+  GDALClose( (GDALDatasetH) firstRaster );
+  GDALClose( (GDALDatasetH) secondRaster );
+  GDALClose( (GDALDatasetH) outRaster );
+}
 
 void ClassifierDialog::manageGui()
 {
@@ -534,7 +839,8 @@ void ClassifierDialog::manageGui()
       {
         continue;
       }
-      cmbInputRaster->addItem( layer_it.value()->name() );
+      cmbFirstRaster->addItem( layer_it.value()->name() );
+      cmbSecondRaster->addItem( layer_it.value()->name() );
     }
   }
 }
@@ -551,10 +857,16 @@ void ClassifierDialog::toggleCheckBoxState( bool checked )
   }
 }
 
-void ClassifierDialog::updateInputFileName()
+void ClassifierDialog::updateFirstFileName()
 {
-  mInputFileName = rasterLayerByName( cmbInputRaster->currentText() )->source();
-  //qDebug() << "InputFileName" << mInputFileName;
+  mFirstRaster = rasterLayerByName( cmbFirstRaster->currentText() )->source();
+  qDebug() << "First raster" << mFirstRaster;
+}
+
+void ClassifierDialog::updateSecondFileName()
+{
+  mSecondRaster = rasterLayerByName( cmbSecondRaster->currentText() )->source();
+  qDebug() << "Second raster" << mSecondRaster;
 }
 
 void ClassifierDialog::enableOrDisableOkButton()

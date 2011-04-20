@@ -39,7 +39,8 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
   private slots:
     void selectOutputFile();
     void doClassification();
-    void updateInputFileName();
+    void updateFirstFileName();
+    void updateSecondFileName();
     void toggleCheckBoxState( bool checked );
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();
@@ -47,7 +48,8 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 
   private:
     QgisInterface* mIface;
-    QString mInputFileName;
+    QString mFirstRaster;
+    QString mSecondRaster;
     QString mOutputFileName;
 
     //QStringList* getVectorLayerNames();
@@ -56,6 +58,9 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     QgsRasterLayer* rasterLayerByName( const QString& name );
 
     QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
+    
+    void singleRasterClassification();
+    void twoRastersClassification();
 
     void mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY );
     void pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY );

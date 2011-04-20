@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>377</width>
-    <height>466</height>
+    <height>562</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -37,12 +37,22 @@
    <item>
     <widget class="QLabel" name="label_3">
      <property name="text">
-      <string>Raster to classify</string>
+      <string>Raster(s) to classify</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="cmbInputRaster"/>
+    <widget class="QComboBox" name="cmbFirstRaster"/>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="twoRastersCheck">
+     <property name="text">
+      <string>Classification with two rasters</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QComboBox" name="cmbSecondRaster"/>
    </item>
    <item>
     <widget class="QLabel" name="label_4">
