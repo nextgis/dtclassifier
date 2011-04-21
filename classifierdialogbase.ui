@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>377</width>
-    <height>562</height>
+    <height>570</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -42,17 +42,17 @@
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="cmbFirstRaster"/>
-   </item>
-   <item>
-    <widget class="QCheckBox" name="twoRastersCheck">
-     <property name="text">
-      <string>Classification with two rasters</string>
+    <widget class="QListWidget" name="rastersList">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::ExtendedSelection</enum>
      </property>
     </widget>
-   </item>
-   <item>
-    <widget class="QComboBox" name="cmbSecondRaster"/>
    </item>
    <item>
     <widget class="QLabel" name="label_4">
