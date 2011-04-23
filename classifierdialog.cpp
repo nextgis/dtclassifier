@@ -119,7 +119,8 @@ void ClassifierDialog::doClassification()
 
   if ( mInputRasters.count() == 1 )
   {
-    singleRasterClassification();
+    QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
+    singleRasterClassification( inputRaster );
   }
   else
   {
@@ -302,10 +303,8 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
   return pointsLayer;
 }
 
-void ClassifierDialog::singleRasterClassification()
+void ClassifierDialog::singleRasterClassification( const QString& rasterFileName )
 {
-  QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
-  
   QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
   QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
 

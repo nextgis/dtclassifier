@@ -61,7 +61,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 
     QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
     
-    void singleRasterClassification();
+    void singleRasterClassification( const QString& rasterFileName );
     void multipleRastersClassification();
 
     void mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY );
