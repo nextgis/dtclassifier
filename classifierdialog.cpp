@@ -58,8 +58,6 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
   GDALAllRegister();
 
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
-  //~ connect( cmbFirstRaster, SIGNAL( currentIndexChanged( const QString& ) ), this, SLOT( updateFirstFileName() ) );
-  //~ connect( cmbSecondRaster, SIGNAL( currentIndexChanged( const QString& ) ), this, SLOT( updateSecondFileName() ) );
   connect( rastersList, SIGNAL( itemSelectionChanged() ), this, SLOT( updateInputRasters() ) );
   connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleCheckBoxState( bool ) ) );
 
@@ -111,11 +109,6 @@ void ClassifierDialog::doClassification()
   settings.setValue( "discreteClasses", discreteLabelsCheckBox->isChecked() );
   settings.setValue( "addToCanvas", addToCanvasCheckBox->isChecked() );
   settings.setValue( "saveTempLayers", savePointLayersCheckBox->isChecked() );
-
-  //~ mFirstRaster = rasterLayerByName( cmbFirstRaster->currentText() )->source();
-  //~ qDebug() << "First raster" << mFirstRaster;
-  //~ mSecondRaster = rasterLayerByName( cmbSecondRaster->currentText() )->source();
-  //~ qDebug() << "Second raster" << mSecondRaster;
 
   if ( mInputRasters.count() == 1 )
   {
@@ -253,6 +246,10 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
   provider->rewind();
   provider->select();
 
+  progressBar->setRange( 0, provider->featureCount() );
+  progressBar->setValue( 0 );
+  progressBar->setFormat( "Generate points: %p%" );
+
   while ( provider->nextFeature( feat ) )
   {
     geom = feat.geometry();
@@ -265,12 +262,6 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
 
     mapToPixel( xMin, yMax, geoTransform, startRow, startCol);
     mapToPixel( xMax, yMin, geoTransform, endRow, endCol);
-
-    //qDebug() << "ROWS" << startRow << endRow;
-    //qDebug() << "COLS" << startCol << endCol;
-    progressBar->setRange( 0, ( endRow - startRow ) * ( endCol - startCol ) );
-    progressBar->setValue( 0 );
-    progressBar->setFormat( "Generate points: %p%" );
 
     for ( int row = startRow; row < endRow + 1; row++ )
     {
@@ -287,10 +278,10 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
           lstFeatures.append( *ft );
         }
       }
-      // update progress and process messages
-      progressBar->setValue( progressBar->value() + 1 );
-      QApplication::processEvents();
     }
+    // update progress and process messages
+    progressBar->setValue( progressBar->value() + 1 );
+    QApplication::processEvents();
   }
   // write to memory layer
   memoryProvider->addFeatures( lstFeatures );
@@ -310,7 +301,7 @@ void ClassifierDialog::singleRasterClassification( const QString& rasterFileName
 
   // read input raster metadata. We need them to create output raster
   GDALDataset *inRaster;
-  inRaster = (GDALDataset *) GDALOpen( inputRaster.toUtf8(), GA_ReadOnly );
+  inRaster = (GDALDataset *) GDALOpen( rasterFileName.toUtf8(), GA_ReadOnly );
   qDebug() << "input raster opened";
 
   double geotransform[6];
@@ -595,8 +586,6 @@ void ClassifierDialog::manageGui()
       {
         continue;
       }
-      //~ cmbFirstRaster->addItem( layer_it.value()->name() );
-      //~ cmbSecondRaster->addItem( layer_it.value()->name() );
       rastersList->addItem( new QListWidgetItem( layer_it.value()->name() ) );
     }
   }
@@ -614,21 +603,8 @@ void ClassifierDialog::toggleCheckBoxState( bool checked )
   }
 }
 
-//~ void ClassifierDialog::updateFirstFileName()
-//~ {
-  //~ mFirstRaster = rasterLayerByName( cmbFirstRaster->currentText() )->source();
-  //~ qDebug() << "First raster" << mFirstRaster;
-//~ }
-//~ 
-//~ void ClassifierDialog::updateSecondFileName()
-//~ {
-  //~ mSecondRaster = rasterLayerByName( cmbSecondRaster->currentText() )->source();
-  //~ qDebug() << "Second raster" << mSecondRaster;
-//~ }
-
 void ClassifierDialog::updateInputRasters()
 {
-  // update raster list lbxPyramidResolutions->selectedItems()
   QList<QListWidgetItem *> selection = rastersList->selectedItems();
   
   mInputRasters.clear();
