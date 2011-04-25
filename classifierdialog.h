@@ -21,6 +21,7 @@
 #define CLASSIFIERDIALOG_H
 
 #include <QDialog>
+#include <QProcess>
 
 #include "qgisinterface.h"
 
@@ -42,6 +43,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void updateInputRasters();
     //void updateFirstFileName();
     //void updateSecondFileName();
+    //void processFinished( int exitCode, QProcess::ExitStatus exitStatus );
     void toggleCheckBoxState( bool checked );
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();
@@ -63,6 +65,8 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     
     void singleRasterClassification( const QString& rasterFileName );
     void multipleRastersClassification();
+    
+    void createSingleBandRaster();
 
     void mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY );
     void pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY );

@@ -25,6 +25,7 @@
 #include <QColor>
 #include <QApplication>
 #include <QList>
+#include <QDir>
 
 #include <cmath>
 
@@ -86,10 +87,10 @@ void ClassifierDialog::selectOutputFile()
   }
 
   // ensure the user never ommited the extension from the file name
-  if ( !fileName.toLower().endsWith( ".tif" ) || !fileName.toLower().endsWith( ".tiff" ) )
-  {
-    fileName += ".tif";
-  }
+  //~ if ( !fileName.toLower().endsWith( ".tif" ) || !fileName.toLower().endsWith( ".tiff" ) )
+  //~ {
+    //~ fileName += ".tif";
+  //~ }
 
   mOutputFileName = fileName;
   leOutputRaster->setText( mOutputFileName );
@@ -540,7 +541,7 @@ void ClassifierDialog::singleRasterClassification( const QString& rasterFileName
 void ClassifierDialog::multipleRastersClassification()
 {
   // merge selected rasters into temporary file
-  
+  createSingleBandRaster();
   // run single raster classification on temporary raster
 }
 
@@ -611,6 +612,7 @@ void ClassifierDialog::updateInputRasters()
   
   for ( int i = 0; i < selection.size(); ++i )
   {
+    // write file path instead of layer name ?
     mInputRasters.append( selection.at( i )->text() );
   }
 }
@@ -655,6 +657,82 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
   // make 0 transparent
   layer->rasterTransparency()->initializeTransparentPixelList( 0.0 );
 }
+
+void ClassifierDialog::createSingleBandRaster()
+{
+  QString layerName, layerPath;
+  GDALDataset* raster;
+  int bandCount, rasterCount;
+  
+  rasterCount = 1;
+  
+  // create dir for our temp files
+  QString tempDir = QDir().tempPath() + "/dtclassifier";
+  if ( !QDir().mkpath( tempDir ) )
+  {
+    qDebug() << "Can't create temporary directory" << tempDir;
+  }
+  
+  QString templateName = tempDir + "/raster_";
+  QString rasterName;
+  
+  QProcess* process = new QProcess();
+  QString command = "gdal_translate";
+  QStringList args;
+
+  //connect( process, SIGNAL( "finished( int exitCode, QProcess::ExitStatus exitStatus )" ), this, SLOT( processFinished( int exitCode, QProcess::ExitStatus exitStatus ) ) );
+
+  // iterate over rasters
+  for (int i = 0; i < mInputRasters.size(); ++i )
+  {
+    layerName = mInputRasters.at( i );
+    layerPath = rasterLayerByName( layerName )->source();
+
+    raster = (GDALDataset*) GDALOpen( layerPath.toUtf8(), GA_ReadOnly );
+    bandCount = raster->GetRasterCount();
+    GDALClose( raster );
+   
+    // iterate over bands
+    for ( int j = 0; j < bandCount; ++j )
+    {
+      rasterName = templateName + QString( "%1.tif" ).arg( rasterCount );
+      qDebug() << rasterName;
+      
+      args.clear();
+      args << "-b" << QString::number( j + 1 ) << layerPath << rasterName;
+      
+      process->start( command, args, QIODevice::ReadOnly );
+      qDebug() << "command:" << command << args.join( " " );
+      process->waitForFinished();
+      rasterCount++;
+    } //for j
+  }
+  
+  // get raster files in temp dir
+  QDir workDir( tempDir );
+  workDir.setFilter( QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot );
+  QStringList nameFilter( "*.tif" );
+  workDir.setNameFilters( nameFilter );
+  QStringList bands = workDir.entryList();
+  
+  rasterName = tempDir + "/output.img";
+  
+  // merge into single raster
+  command = "gdal_merge.py";
+  args.clear();
+  args << "-separate" << "-of" << "HFA" << "-o" << rasterName << bands;
+  
+  process->setWorkingDirectory( tempDir );
+  process->start( command, args, QIODevice::ReadOnly );
+  qDebug() << "command:" << command << args.join( " " );
+  process->waitForFinished();
+}
+
+//~ void ClassifierDialog::processFinished( int exitCode, QProcess::ExitStatus exitStatus )
+//~ {
+  //~ qDebug() << "finished";
+//~ }
+
 
 // -------------- Coordinate transform routines ------------------------
 
