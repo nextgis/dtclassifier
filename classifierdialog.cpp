@@ -46,6 +46,7 @@
 #include "qgsvectorfilewriter.h"
 
 #include "classifierdialog.h"
+#include "classifierutils.h"
 
 ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
     : QDialog( parent ),
@@ -87,10 +88,10 @@ void ClassifierDialog::selectOutputFile()
   }
 
   // ensure the user never ommited the extension from the file name
-  //~ if ( !fileName.toLower().endsWith( ".tif" ) || !fileName.toLower().endsWith( ".tiff" ) )
-  //~ {
-    //~ fileName += ".tif";
-  //~ }
+  if ( ( !fileName.toLower().endsWith( ".tif" ) ) || ( !fileName.toLower().endsWith( ".tiff" ) ) )
+  {
+    fileName += ".tif";
+  }
 
   mOutputFileName = fileName;
   leOutputRaster->setText( mOutputFileName );
@@ -131,100 +132,20 @@ void ClassifierDialog::doClassification()
   }
 }
 
-/*
-void ClassifierDialog::on_buttonBox_accepted()
-{
-  accept();
-}
-*/
+//~ void ClassifierDialog::on_buttonBox_accepted()
+//~ {
+  //~ accept();
+//~ }
 
 void ClassifierDialog::on_buttonBox_rejected()
 {
   reject();
 }
 
-/*
-void ClassifierDialog::on_buttonBox_helpRequested()
-{
-  QgsContextHelp::run( context_id );
-}
-
-QStringList* ClassifierDialog::getVectorLayerNames()
-{
-  QStringList* layers = new QStringList();
-
-  QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
-  QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
-
-  for ( ; layer_it != mapLayers.end(); ++layer_it )
-  {
-    if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
-    {
-      layers->append( layer_it.value()->name() );
-    }
-  }
-
-  return layers;
-}
-
-QStringList* ClassifierDialog::getRasterLayerNames()
-{
-  QStringList* layers = new QStringList();
-
-  QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
-  QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
-
-  for ( ; layer_it != mapLayers.end(); ++layer_it )
-  {
-    if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
-    {
-      if ( layer_it.value()->usesProvider() && layer_it.value()->providerKey() != "gdal" )
-      {
-        continue;
-      }
-      layers->append( layer_it.value()->name() );
-    }
-  }
-
-  return layers;
-}
-*/
-
-QgsVectorLayer* ClassifierDialog::vectorLayerByName( const QString& name )
-{
-  QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
-  QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
-
-  for ( ; layer_it != mapLayers.end(); ++layer_it )
-  {
-    if ( layer_it.value()->type() == QgsMapLayer::VectorLayer && layer_it.value()->name() == name )
-    {
-      return qobject_cast<QgsVectorLayer *>( layer_it.value() );
-    }
-  }
-
-  return 0;
-}
-
-QgsRasterLayer* ClassifierDialog::rasterLayerByName( const QString& name )
-{
-  QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
-  QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
-
-  for ( ; layer_it != mapLayers.end(); ++layer_it )
-  {
-    if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
-    {
-      if ( qobject_cast<QgsRasterLayer *>( layer_it.value() )->usesProvider() && qobject_cast<QgsRasterLayer *>( layer_it.value() )->providerKey() != "gdal" )
-      {
-        continue;
-      }
-      return qobject_cast<QgsRasterLayer *>( layer_it.value() );
-    }
-  }
-
-  return 0;
-}
+//~ void ClassifierDialog::on_buttonBox_helpRequested()
+//~ {
+  //~ QgsContextHelp::run( context_id );
+//~ }
 
 QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName )
 {
@@ -542,6 +463,7 @@ void ClassifierDialog::multipleRastersClassification()
 {
   // merge selected rasters into temporary file
   createSingleBandRaster();
+  
   // run single raster classification on temporary raster
 }
 
@@ -570,6 +492,8 @@ void ClassifierDialog::manageGui()
   // populate vector layers comboboxes
   QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
   QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
+  
+  QgsRasterLayer* layer;
 
   for ( ; layer_it != mapLayers.end(); ++layer_it )
   {
@@ -583,7 +507,8 @@ void ClassifierDialog::manageGui()
     }
     else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
     {
-      if ( qobject_cast<QgsRasterLayer *>( layer_it.value() )->usesProvider() && qobject_cast<QgsRasterLayer *>( layer_it.value() )->providerKey() != "gdal" )
+      layer = qobject_cast<QgsRasterLayer *> ( layer_it.value() );
+      if ( layer->usesProvider() && layer->providerKey() != "gdal" )
       {
         continue;
       }
@@ -679,8 +604,9 @@ void ClassifierDialog::createSingleBandRaster()
   QProcess* process = new QProcess();
   QString command = "gdal_translate";
   QStringList args;
-
-  //connect( process, SIGNAL( "finished( int exitCode, QProcess::ExitStatus exitStatus )" ), this, SLOT( processFinished( int exitCode, QProcess::ExitStatus exitStatus ) ) );
+  
+  //connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( processFinished( int, QProcess::ExitStatus ) ) );
+  connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateMergeProgress() ) );
 
   // iterate over rasters
   for (int i = 0; i < mInputRasters.size(); ++i )
@@ -691,23 +617,36 @@ void ClassifierDialog::createSingleBandRaster()
     raster = (GDALDataset*) GDALOpen( layerPath.toUtf8(), GA_ReadOnly );
     bandCount = raster->GetRasterCount();
     GDALClose( raster );
+    
+    progressBar->setValue( 0 );
+    progressBar->setFormat( layerName + ": %p%" );
+    progressBar->setRange( 0, bandCount );
    
     // iterate over bands
     for ( int j = 0; j < bandCount; ++j )
     {
       rasterName = templateName + QString( "%1.tif" ).arg( rasterCount );
-      qDebug() << rasterName;
       
       args.clear();
       args << "-b" << QString::number( j + 1 ) << layerPath << rasterName;
       
       process->start( command, args, QIODevice::ReadOnly );
-      qDebug() << "command:" << command << args.join( " " );
-      process->waitForFinished();
+      if ( !process->waitForFinished( -1 ) )
+      {
+        qDebug() << "Failed to extract bands from raster" << layerPath;
+        return;
+      }
       rasterCount++;
     } //for j
-  }
+  } //for i
+
+  disconnect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateMergeProgress() ) );
+  connect( process, SIGNAL( readyReadStandardOutput() ), this, SLOT( updateMergeProgress() ) );
   
+  progressBar->setValue( 0 );
+  progressBar->setFormat( "Merge bands: %p%" );
+  progressBar->setRange( 0, 20 );
+
   // get raster files in temp dir
   QDir workDir( tempDir );
   workDir.setFilter( QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot );
@@ -723,16 +662,30 @@ void ClassifierDialog::createSingleBandRaster()
   args << "-separate" << "-of" << "HFA" << "-o" << rasterName << bands;
   
   process->setWorkingDirectory( tempDir );
+  process->setReadChannel( QProcess::StandardOutput );
   process->start( command, args, QIODevice::ReadOnly );
   qDebug() << "command:" << command << args.join( " " );
-  process->waitForFinished();
+  process->waitForFinished( -1 );
+
+  progressBar->setValue( 0 );
+  progressBar->setFormat( "%p%" );
+  progressBar->setRange( 0, 100 );
+  
+  // cleanup?
+  removeTempFiles( tempDir );
 }
 
 //~ void ClassifierDialog::processFinished( int exitCode, QProcess::ExitStatus exitStatus )
 //~ {
-  //~ qDebug() << "finished";
+  //~ progressBar->setValue( progressBar->value() + 1 );
+  //~ QApplication::processEvents();
 //~ }
 
+void ClassifierDialog::updateProgressBar()
+{
+  progressBar->setValue( progressBar->value() + 1 );
+  QApplication::processEvents();
+}
 
 // -------------- Coordinate transform routines ------------------------
 

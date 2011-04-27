@@ -5,6 +5,7 @@
 SET (CLASSIFIER_SRCS
      classifier.cpp
      classifierdialog.cpp
+     classifierutils.cpp
 )
 
 SET (CLASSIFIER_UIS
