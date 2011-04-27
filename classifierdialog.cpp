@@ -115,11 +115,12 @@ void ClassifierDialog::doClassification()
   if ( mInputRasters.count() == 1 )
   {
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
-    singleRasterClassification( inputRaster );
+    rasterClassification( inputRaster );
   }
   else
   {
-    multipleRastersClassification();
+    rasterClassification( createSingleBandRaster() );
+    removeDirectory( QDir().tempPath() + "/dtclassifier" );
   }
 
   // add classified raster to map canvas if requested
@@ -216,7 +217,7 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
   return pointsLayer;
 }
 
-void ClassifierDialog::singleRasterClassification( const QString& rasterFileName )
+void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 {
   QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
   QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
@@ -459,14 +460,6 @@ void ClassifierDialog::singleRasterClassification( const QString& rasterFileName
   GDALClose( (GDALDatasetH) outRaster );
 }
 
-void ClassifierDialog::multipleRastersClassification()
-{
-  // merge selected rasters into temporary file
-  createSingleBandRaster();
-  
-  // run single raster classification on temporary raster
-}
-
 void ClassifierDialog::manageGui()
 {
   // restore ui state from settings
@@ -583,7 +576,7 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
   layer->rasterTransparency()->initializeTransparentPixelList( 0.0 );
 }
 
-void ClassifierDialog::createSingleBandRaster()
+QString ClassifierDialog::createSingleBandRaster()
 {
   QString layerName, layerPath;
   GDALDataset* raster;
@@ -606,7 +599,7 @@ void ClassifierDialog::createSingleBandRaster()
   QStringList args;
   
   //connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( processFinished( int, QProcess::ExitStatus ) ) );
-  connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateMergeProgress() ) );
+  connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateProgressBar() ) );
 
   // iterate over rasters
   for (int i = 0; i < mInputRasters.size(); ++i )
@@ -634,14 +627,14 @@ void ClassifierDialog::createSingleBandRaster()
       if ( !process->waitForFinished( -1 ) )
       {
         qDebug() << "Failed to extract bands from raster" << layerPath;
-        return;
+        return QString();
       }
       rasterCount++;
     } //for j
   } //for i
 
-  disconnect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateMergeProgress() ) );
-  connect( process, SIGNAL( readyReadStandardOutput() ), this, SLOT( updateMergeProgress() ) );
+  disconnect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateProgressBar() ) );
+  connect( process, SIGNAL( readyReadStandardOutput() ), this, SLOT( updateProgressBar() ) );
   
   progressBar->setValue( 0 );
   progressBar->setFormat( "Merge bands: %p%" );
@@ -671,8 +664,7 @@ void ClassifierDialog::createSingleBandRaster()
   progressBar->setFormat( "%p%" );
   progressBar->setRange( 0, 100 );
   
-  // cleanup?
-  removeTempFiles( tempDir );
+  return rasterName;
 }
 
 //~ void ClassifierDialog::processFinished( int exitCode, QProcess::ExitStatus exitStatus )
