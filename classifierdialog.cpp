@@ -122,7 +122,7 @@ void ClassifierDialog::doClassification()
     totalProgress->setRange( 0, 5 );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     rasterClassification( inputRaster );
-    smoothRaster( mOutputFileName );
+    //smoothRaster( mOutputFileName );
   }
   else
   {
@@ -243,7 +243,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   ySize = inRaster->GetRasterYSize();
   bandCount = inRaster->GetRasterCount();
   inRaster->GetGeoTransform( geotransform );
-
+  
   totalProgress->setValue( totalProgress->value() + 1 );
 
   // create points from polygons
@@ -297,7 +297,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   GDALDriver *driver;
   driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
   GDALDataset *outRaster;
-  outRaster = driver->Create( mOutputFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
+  outRaster = driver->Create( mOutputFileName.toUtf8(), xSize, ySize, 1, GDT_Byte, NULL );
   outRaster->SetGeoTransform( geotransform );
   outRaster->SetProjection( inRaster->GetProjectionRef() );
   qDebug() << "output raster created";
@@ -426,7 +426,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
   // classify raster using tree
   CvMat* sample = cvCreateMat( bandCount, 1, CV_32F );
-  QVector<float> outData( xSize );
+  QVector<char> outData( xSize );
 
   stepProgress->setFormat( "Classification: %p%" );
   stepProgress->setRange( 0, ySize );
@@ -452,14 +452,14 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
       if ( rbDecisionTree->isChecked() )
       {
-        outData[ col ] = dtree->predict( sample )->value;
+        outData[ col ] = (char)dtree->predict( sample )->value;
       }
       else
       {
-        outData[ col ] = rtree->predict( sample );
+        outData[ col ] = (char)rtree->predict( sample );
       }
     }
-    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0, 0 );
+    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Byte, 1, 0, 0, 0 , 0 );
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
@@ -598,10 +598,18 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
 
 void ClassifierDialog::smoothRaster( const QString& path )
 {
-  CvMat* img = cvLoadImageM( path.toUtf8(), CV_LOAD_IMAGE_UNCHANGED );
-  IplConvKernel* kernel = cvCreateStructuringElementEx( 3, 3, 1, 1, NULL );
+  CvMat* img = cvLoadImageM( path.toUtf8(), CV_LOAD_IMAGE_COLOR ); //CV_LOAD_IMAGE_COLOR CV_LOAD_IMAGE_UNCHANGED
+  int size = 1;
+  IplConvKernel* kernel = cvCreateStructuringElementEx( size * 2 + 1, size * 2 + 1, size, size, CV_SHAPE_RECT, 0 );
   
+  //CvMat hdr;
+  //CvMat *dst = cvReshape( img, &hdr, 3, 0 );
+  
+  qDebug() << "Start dilate";
   cvDilate( img, img, kernel, 1 );
+  qDebug() << "dilate ok";
+  
+  cvReleaseStructuringElement( &kernel );
 
   // read input raster metadata. We need them to create output raster
   GDALDataset *inRaster;
@@ -626,8 +634,9 @@ void ClassifierDialog::smoothRaster( const QString& path )
   outRaster->SetGeoTransform( geotransform );
   outRaster->SetProjection( inRaster->GetProjectionRef() );
   
-  outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, img->data.ptr, xSize, ySize, GDT_Float32, 1, 0, 0, 0, 0 );
+  //outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, img->data.ptr, xSize, ySize, GDT_Float32, 1, 0, 0, 0, 0 );
 
+  cvReleaseMat( &img );
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
 }
