@@ -88,7 +88,7 @@ void ClassifierDialog::selectOutputFile()
   }
 
   // ensure the user never ommited the extension from the file name
-  if ( ( !fileName.toLower().endsWith( ".tif" ) ) || ( !fileName.toLower().endsWith( ".tiff" ) ) )
+  if ( !fileName.toLower().endsWith( ".tif" ) && !fileName.toLower().endsWith( ".tiff" ) )
   {
     fileName += ".tif";
   }
