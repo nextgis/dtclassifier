@@ -42,7 +42,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void doClassification();
     void updateInputRasters();
     //void processFinished( int, QProcess::ExitStatus );
-    void updateProgressBar();
+    void updateStepProgress();
     void toggleCheckBoxState( bool checked );
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();

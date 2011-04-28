@@ -112,16 +112,23 @@ void ClassifierDialog::doClassification()
   settings.setValue( "addToCanvas", addToCanvasCheckBox->isChecked() );
   settings.setValue( "saveTempLayers", savePointLayersCheckBox->isChecked() );
 
+  totalProgress->setFormat( "%p%" );
+  totalProgress->setValue( 0 );
+
   if ( mInputRasters.count() == 1 )
   {
+    totalProgress->setRange( 0, 5 );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     rasterClassification( inputRaster );
   }
   else
   {
+    totalProgress->setRange( 0, 7 );
     rasterClassification( createSingleBandRaster() );
     removeDirectory( QDir().tempPath() + "/dtclassifier" );
   }
+  
+  totalProgress->setFormat( "Done: %p%" );
 
   // add classified raster to map canvas if requested
   if ( addToCanvasCheckBox->isChecked() )
@@ -169,9 +176,9 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
   provider->rewind();
   provider->select();
 
-  progressBar->setRange( 0, provider->featureCount() );
-  progressBar->setValue( 0 );
-  progressBar->setFormat( "Generate points: %p%" );
+  stepProgress->setRange( 0, provider->featureCount() );
+  stepProgress->setValue( 0 );
+  stepProgress->setFormat( "Generate points: %p%" );
 
   while ( provider->nextFeature( feat ) )
   {
@@ -203,16 +210,16 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
       }
     }
     // update progress and process messages
-    progressBar->setValue( progressBar->value() + 1 );
+    stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
   // write to memory layer
   memoryProvider->addFeatures( lstFeatures );
   pointsLayer->updateExtents();
 
-  progressBar->setFormat( "%p%" );
-  progressBar->setRange( 0, 100 );
-  progressBar->setValue( 0 );
+  stepProgress->setFormat( "%p%" );
+  stepProgress->setRange( 0, 100 );
+  stepProgress->setValue( 0 );
 
   return pointsLayer;
 }
@@ -233,6 +240,8 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   ySize = inRaster->GetRasterYSize();
   bandCount = inRaster->GetRasterCount();
   inRaster->GetGeoTransform( geotransform );
+
+  totalProgress->setValue( totalProgress->value() + 1 );
 
   // create points from polygons
   QgsVectorLayer *pointsPresence = pointsFromPolygons( polygonPresence, geotransform, "pointsPresence" );
@@ -308,9 +317,11 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   provider->rewind();
   provider->select();
   
-  progressBar->setValue( 0 );
-  progressBar->setFormat( "Collect train data: %p%" );
-  progressBar->setRange( 0, provider->featureCount() );
+  stepProgress->setValue( 0 );
+  stepProgress->setFormat( "Collect train data: %p%" );
+  stepProgress->setRange( 0, provider->featureCount() );
+
+  totalProgress->setValue( totalProgress->value() + 1 );
 
   while ( provider->nextFeature( feat ) )
   {
@@ -334,7 +345,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
     cvmSet( responses, i, 0, 1 );
     i++;
     
-    progressBar->setValue( progressBar->value() + 1 );
+    stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
 
@@ -342,7 +353,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   provider->rewind();
   provider->select();
   
-  progressBar->setRange( 0, provider->featureCount() );
+  stepProgress->setRange( 0, provider->featureCount() );
 
   while ( provider->nextFeature( feat ) )
   {
@@ -366,13 +377,15 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
     cvmSet( responses, i, 0, 0 );
     i++;
 
-    progressBar->setValue( progressBar->value() + 1 );
+    stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
   
-  progressBar->setValue( 0 );
-  progressBar->setFormat( "%p%" );
-  progressBar->setRange( 0, 100 );
+  stepProgress->setValue( 0 );
+  stepProgress->setFormat( "%p%" );
+  stepProgress->setRange( 0, 100 );
+
+  totalProgress->setValue( totalProgress->value() + 1 );
 
   CvDTree* dtree = new CvDTree();
   CvRTrees* rtree = new CvRTrees();
@@ -412,9 +425,11 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   CvMat* sample = cvCreateMat( bandCount, 1, CV_32F );
   QVector<float> outData( xSize );
 
-  progressBar->setFormat( "Classification: %p%" );
-  progressBar->setRange( 0, ySize );
-  progressBar->setValue( 0 );
+  stepProgress->setFormat( "Classification: %p%" );
+  stepProgress->setRange( 0, ySize );
+  stepProgress->setValue( 0 );
+
+  totalProgress->setValue( totalProgress->value() + 1 );
 
   for ( int row = 0; row < ySize; ++row )
   {
@@ -442,14 +457,16 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
       }
     }
     outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0 , 0 );
-    progressBar->setValue( progressBar->value() + 1 );
+    stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
 
+  totalProgress->setValue( totalProgress->value() + 1 );
+
   // cleanup
-  progressBar->setFormat( "%p%" );
-  progressBar->setRange( 0, 100 );
-  progressBar->setValue( 0 );
+  stepProgress->setFormat( "%p%" );
+  stepProgress->setRange( 0, 100 );
+  stepProgress->setValue( 0 );
   cvReleaseMat( &sample );
   dtree->clear();
   delete dtree;
@@ -599,7 +616,9 @@ QString ClassifierDialog::createSingleBandRaster()
   QStringList args;
   
   //connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( processFinished( int, QProcess::ExitStatus ) ) );
-  connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateProgressBar() ) );
+  connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateStepProgress() ) );
+
+  totalProgress->setValue( totalProgress->value() + 1 );
 
   // iterate over rasters
   for (int i = 0; i < mInputRasters.size(); ++i )
@@ -611,9 +630,9 @@ QString ClassifierDialog::createSingleBandRaster()
     bandCount = raster->GetRasterCount();
     GDALClose( raster );
     
-    progressBar->setValue( 0 );
-    progressBar->setFormat( layerName + ": %p%" );
-    progressBar->setRange( 0, bandCount );
+    stepProgress->setValue( 0 );
+    stepProgress->setFormat( "Preparing " + layerName + ": %p%" );
+    stepProgress->setRange( 0, bandCount );
    
     // iterate over bands
     for ( int j = 0; j < bandCount; ++j )
@@ -633,12 +652,12 @@ QString ClassifierDialog::createSingleBandRaster()
     } //for j
   } //for i
 
-  disconnect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateProgressBar() ) );
-  connect( process, SIGNAL( readyReadStandardOutput() ), this, SLOT( updateProgressBar() ) );
+  disconnect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateStepProgress() ) );
+  connect( process, SIGNAL( readyReadStandardOutput() ), this, SLOT( updateStepProgress() ) );
   
-  progressBar->setValue( 0 );
-  progressBar->setFormat( "Merge bands: %p%" );
-  progressBar->setRange( 0, 20 );
+  stepProgress->setValue( 0 );
+  stepProgress->setFormat( "Merge bands: %p%" );
+  stepProgress->setRange( 0, 20 );
 
   // get raster files in temp dir
   QDir workDir( tempDir );
@@ -658,28 +677,34 @@ QString ClassifierDialog::createSingleBandRaster()
   args.clear();
   args << "-separate" << "-of" << "HFA" << "-o" << rasterName << bands;
   
+  totalProgress->setValue( totalProgress->value() + 1 );
+
   process->setWorkingDirectory( tempDir );
   process->setReadChannel( QProcess::StandardOutput );
   process->start( command, args, QIODevice::ReadOnly );
   qDebug() << "command:" << command << args.join( " " );
-  process->waitForFinished( -1 );
+  if ( !process->waitForFinished( -1 ) )
+  {
+    qDebug() << "Failed to merge bands into single raster";
+    return QString();
+  }
 
-  progressBar->setValue( 0 );
-  progressBar->setFormat( "%p%" );
-  progressBar->setRange( 0, 100 );
+  stepProgress->setValue( 0 );
+  stepProgress->setFormat( "%p%" );
+  stepProgress->setRange( 0, 100 );
   
   return rasterName;
 }
 
 //~ void ClassifierDialog::processFinished( int exitCode, QProcess::ExitStatus exitStatus )
 //~ {
-  //~ progressBar->setValue( progressBar->value() + 1 );
+  //~ stepProgress->setValue( stepProgress->value() + 1 );
   //~ QApplication::processEvents();
 //~ }
 
-void ClassifierDialog::updateProgressBar()
+void ClassifierDialog::updateStepProgress()
 {
-  progressBar->setValue( progressBar->value() + 1 );
+  stepProgress->setValue( stepProgress->value() + 1 );
   QApplication::processEvents();
 }
 
