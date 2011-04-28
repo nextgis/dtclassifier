@@ -35,6 +35,8 @@
 
 #include "opencv2/core/core_c.h"
 #include "opencv2/ml/ml.hpp"
+#include "opencv2/highgui/highgui_c.h"
+#include "opencv2/imgproc/imgproc_c.h"
 
 #include "qgscontexthelp.h"
 #include "qgsgeometry.h"
@@ -120,6 +122,7 @@ void ClassifierDialog::doClassification()
     totalProgress->setRange( 0, 5 );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     rasterClassification( inputRaster );
+    smoothRaster( mOutputFileName );
   }
   else
   {
@@ -591,6 +594,42 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
 
   // make 0 transparent
   layer->rasterTransparency()->initializeTransparentPixelList( 0.0 );
+}
+
+void ClassifierDialog::smoothRaster( const QString& path )
+{
+  CvMat* img = cvLoadImageM( path.toUtf8(), CV_LOAD_IMAGE_UNCHANGED );
+  IplConvKernel* kernel = cvCreateStructuringElementEx( 3, 3, 1, 1, NULL );
+  
+  cvDilate( img, img, kernel, 1 );
+
+  // read input raster metadata. We need them to create output raster
+  GDALDataset *inRaster;
+  inRaster = (GDALDataset *) GDALOpen( path.toUtf8(), GA_ReadOnly );
+
+  double geotransform[6];
+  int xSize, ySize, bandCount;
+  xSize = inRaster->GetRasterXSize();
+  ySize = inRaster->GetRasterYSize();
+  bandCount = inRaster->GetRasterCount();
+  inRaster->GetGeoTransform( geotransform );
+
+  QFileInfo fi( path );
+  QString smoothFileName;
+  smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth.tif";
+
+  // create output file
+  GDALDriver *driver;
+  driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
+  GDALDataset *outRaster;
+  outRaster = driver->Create( smoothFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
+  outRaster->SetGeoTransform( geotransform );
+  outRaster->SetProjection( inRaster->GetProjectionRef() );
+  
+  outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, img->data.ptr, xSize, ySize, GDT_Float32, 1, 0, 0, 0, 0 );
+
+  GDALClose( (GDALDatasetH) inRaster );
+  GDALClose( (GDALDatasetH) outRaster );
 }
 
 QString ClassifierDialog::createSingleBandRaster()
