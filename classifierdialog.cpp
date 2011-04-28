@@ -650,7 +650,11 @@ QString ClassifierDialog::createSingleBandRaster()
   rasterName = tempDir + "/output.img";
   
   // merge into single raster
-  command = "gdal_merge.py";
+  #ifdef Q_OS_WIN32
+    command = "gdal_merge.bat";
+  #else
+    command = "gdal_merge.py";
+  #endif
   args.clear();
   args << "-separate" << "-of" << "HFA" << "-o" << rasterName << bands;
   
