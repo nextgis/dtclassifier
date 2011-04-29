@@ -224,6 +224,115 @@ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLay
   return pointsLayer;
 }
 
+QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName )
+{
+  double geoTransform[6];
+  int xSize, ySize, bandCount;
+  xSize = inRaster->GetRasterXSize();
+  ySize = inRaster->GetRasterYSize();
+  bandCount = inRaster->GetRasterCount();
+  inRaster->GetGeoTransform( geoTransform );
+  
+  // create memory layer
+  QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", layerName, "memory" );
+  QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
+  QgsVectorDataProvider *provider = polygonLayer->dataProvider();
+
+  // add attributes to provider
+  QList<QgsField> attrList;
+  for ( int i = 0; i < bandCount; ++i )
+  {
+    QgsField* field = new QgsField( QString( "Band_%1").arg( i + 1 ), QVariant::Double );
+    attrList.append( *field );
+  }
+  attrList.append( QgsField( "Class", QVariant::Int ) );
+  
+  bool isOk = memoryProvider->addAttributes( attrList );
+  qDebug() << "added attributes" << isOk;
+  qDebug() << "field count" << memoryProvider->fieldCount();
+  
+  // create points
+  QgsFeature feat;
+  QgsGeometry* geom;
+  QgsRectangle bbox;
+  double xMin, xMax, yMin, yMax;
+  double startCol, startRow, endCol, endRow;
+  double x, y;
+  QgsPoint* pnt = new QgsPoint();
+  QgsFeature* ft;
+  QgsFeatureList lstFeatures;
+  
+  QVector<float> rasterData( xSize * bandCount );
+
+  provider->rewind();
+  provider->select();
+
+  stepProgress->setRange( 0, provider->featureCount() );
+  stepProgress->setValue( 0 );
+  stepProgress->setFormat( "Generate points: %p%" );
+
+  while ( provider->nextFeature( feat ) )
+  {
+    geom = feat.geometry();
+    bbox = geom->boundingBox();
+
+    xMin = bbox.xMinimum();
+    xMax = bbox.xMaximum();
+    yMin = bbox.yMinimum();
+    yMax = bbox.yMaximum();
+
+    mapToPixel( xMin, yMax, geoTransform, startRow, startCol);
+    mapToPixel( xMax, yMin, geoTransform, endRow, endCol);
+
+    for ( int row = startRow; row < endRow + 1; row++ )
+    {
+      for ( int col = startCol; col < endCol + 1; col++ )
+      {
+        // create point and test
+        pixelToMap( row - 0.5, col - 0.5, geoTransform, x, y );
+        pnt->setX( x );
+        pnt->setY( y );
+        if ( geom->contains( pnt ) )
+        {
+          ft = new QgsFeature();
+          ft->setGeometry( QgsGeometry::fromPoint( *pnt ) );
+          // get pixel value
+          inRaster->RasterIO( GF_Read, row - 0.5, col - 0.5, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
+          for ( int i = 0; i < bandCount; ++i )
+          {
+            ft->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
+          }
+          ft->addAttribute( bandCount, QVariant( 1 ) );
+          lstFeatures.append( *ft );
+        }
+      }
+    }
+    // update progress and process messages
+    stepProgress->setValue( stepProgress->value() + 1 );
+    QApplication::processEvents();
+  }
+  // write to memory layer
+  memoryProvider->addFeatures( lstFeatures );
+  pointsLayer->updateExtents();
+  // ? workaround?
+  pointsLayer->startEditing();
+  pointsLayer->commitChanges();
+
+  stepProgress->setFormat( "%p%" );
+  stepProgress->setRange( 0, 100 );
+  stepProgress->setValue( 0 );
+
+  return pointsLayer;
+  
+  //~ col = floor( pixX );
+  //~ row = floor( pixY );
+  //~ inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
+  //~ for (int j = 0; j < bandCount; j++)
+  //~ {
+    //~ cvmSet( data, i, j, rasterData[ j ] );
+  //~ }
+}
+
 void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 {
   QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
@@ -240,12 +349,19 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   ySize = inRaster->GetRasterYSize();
   bandCount = inRaster->GetRasterCount();
   inRaster->GetGeoTransform( geotransform );
+  
+  qDebug() << "Band count" << bandCount;
 
   totalProgress->setValue( totalProgress->value() + 1 );
 
   // create points from polygons
-  QgsVectorLayer *pointsPresence = pointsFromPolygons( polygonPresence, geotransform, "pointsPresence" );
-  QgsVectorLayer *pointsAbsence = pointsFromPolygons( polygonAbsence, geotransform, "pointsAbsence" );
+  //~ QgsVectorLayer *pointsPresence = pointsFromPolygons( polygonPresence, geotransform, "pointsPresence" );
+  //~ QgsVectorLayer *pointsAbsence = pointsFromPolygons( polygonAbsence, geotransform, "pointsAbsence" );
+  QgsVectorLayer *pointsPresence = extractPoints( polygonPresence, inRaster, "pointsPresence" );
+  QgsVectorLayer *pointsAbsence = extractPoints( polygonAbsence, inRaster, "pointsAbsence" );
+
+  //~ QgsMapLayerRegistry::instance()->addMapLayer( pointsPresence );
+  //~ QgsMapLayerRegistry::instance()->addMapLayer( pointsAbsence );
 
   long featCount = pointsAbsence->featureCount() + pointsPresence->featureCount();
   qDebug() << "Feature count" << featCount;
