@@ -122,7 +122,7 @@ void ClassifierDialog::doClassification()
     totalProgress->setRange( 0, 5 );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     rasterClassification( inputRaster );
-    //smoothRaster( mOutputFileName );
+    smoothRaster( mOutputFileName );
   }
   else
   {
@@ -606,39 +606,43 @@ void ClassifierDialog::smoothRaster( const QString& path )
   //CvMat *dst = cvReshape( img, &hdr, 3, 0 );
   
   qDebug() << "Start dilate";
+  cvDilate( img, img, kernel, 2 );
+  cvErode( img, img, kernel, 4 );
   cvDilate( img, img, kernel, 1 );
   qDebug() << "dilate ok";
   
   cvReleaseStructuringElement( &kernel );
-
+  
   // read input raster metadata. We need them to create output raster
-  GDALDataset *inRaster;
-  inRaster = (GDALDataset *) GDALOpen( path.toUtf8(), GA_ReadOnly );
-
-  double geotransform[6];
-  int xSize, ySize, bandCount;
-  xSize = inRaster->GetRasterXSize();
-  ySize = inRaster->GetRasterYSize();
-  bandCount = inRaster->GetRasterCount();
-  inRaster->GetGeoTransform( geotransform );
+  //~ GDALDataset *inRaster;
+  //~ inRaster = (GDALDataset *) GDALOpen( path.toUtf8(), GA_ReadOnly );
+//~ 
+  //~ double geotransform[6];
+  //~ int xSize, ySize, bandCount;
+  //~ xSize = inRaster->GetRasterXSize();
+  //~ ySize = inRaster->GetRasterYSize();
+  //~ bandCount = inRaster->GetRasterCount();
+  //~ inRaster->GetGeoTransform( geotransform );
 
   QFileInfo fi( path );
   QString smoothFileName;
   smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth.tif";
+  cvSaveImage( smoothFileName.toUtf8(), img );
+
 
   // create output file
-  GDALDriver *driver;
-  driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
-  GDALDataset *outRaster;
-  outRaster = driver->Create( smoothFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
-  outRaster->SetGeoTransform( geotransform );
-  outRaster->SetProjection( inRaster->GetProjectionRef() );
-  
-  //outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, img->data.ptr, xSize, ySize, GDT_Float32, 1, 0, 0, 0, 0 );
+  //~ GDALDriver *driver;
+  //~ driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
+  //~ GDALDataset *outRaster;
+  //~ outRaster = driver->Create( smoothFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
+  //~ outRaster->SetGeoTransform( geotransform );
+  //~ outRaster->SetProjection( inRaster->GetProjectionRef() );
+  //~ 
+  //~ outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, img->data.ptr, xSize, ySize, GDT_Float32, 1, 0, 0, 0, 0 );
 
   cvReleaseMat( &img );
-  GDALClose( (GDALDatasetH) inRaster );
-  GDALClose( (GDALDatasetH) outRaster );
+  //~ GDALClose( (GDALDatasetH) inRaster );
+  //~ GDALClose( (GDALDatasetH) outRaster );
 }
 
 QString ClassifierDialog::createSingleBandRaster()
