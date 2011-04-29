@@ -456,7 +456,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
         outData[ col ] = rtree->predict( sample );
       }
     }
-    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0 , 0 );
+    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0, 0 );
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
@@ -628,7 +628,7 @@ QString ClassifierDialog::createSingleBandRaster()
 
     raster = (GDALDataset*) GDALOpen( layerPath.toUtf8(), GA_ReadOnly );
     bandCount = raster->GetRasterCount();
-    GDALClose( raster );
+    GDALClose( (GDALDatasetH)raster );
     
     stepProgress->setValue( 0 );
     stepProgress->setFormat( "Preparing " + layerName + ": %p%" );
@@ -637,7 +637,7 @@ QString ClassifierDialog::createSingleBandRaster()
     // iterate over bands
     for ( int j = 0; j < bandCount; ++j )
     {
-      rasterName = templateName + QString( "%1.tif" ).arg( rasterCount );
+      rasterName = templateName + QString( "%1.tif" ).arg( rasterCount, 2, 10, QChar( 48 ) );
       
       args.clear();
       args << "-b" << QString::number( j + 1 ) << layerPath << rasterName;
@@ -665,6 +665,7 @@ QString ClassifierDialog::createSingleBandRaster()
   QStringList nameFilter( "*.tif" );
   workDir.setNameFilters( nameFilter );
   QStringList bands = workDir.entryList();
+  bands.sort();
   
   rasterName = tempDir + "/output.img";
   

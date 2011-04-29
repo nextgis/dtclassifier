@@ -114,7 +114,10 @@ QgsRasterLayer* rasterLayerByName( const QString& name )
       {
         continue;
       }
-      return layer;
+      if ( layer->name() == name )
+      {
+        return layer;
+      }
     }
   }
 
