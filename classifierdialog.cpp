@@ -155,74 +155,74 @@ void ClassifierDialog::on_buttonBox_rejected()
   //~ QgsContextHelp::run( context_id );
 //~ }
 
-QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName )
-{
-  QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", layerName, "memory" );
-  QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
-  QgsVectorDataProvider *provider = polygonLayer->dataProvider();
-
-  // TODO: add attributes to provider
-
-  QgsFeature feat;
-  QgsGeometry* geom;
-  QgsRectangle bbox;
-  double xMin, xMax, yMin, yMax;
-  double startCol, startRow, endCol, endRow;
-  double x, y;
-  QgsPoint* pnt = new QgsPoint();
-  QgsFeature* ft;
-  QgsFeatureList lstFeatures;
-
-  provider->rewind();
-  provider->select();
-
-  stepProgress->setRange( 0, provider->featureCount() );
-  stepProgress->setValue( 0 );
-  stepProgress->setFormat( "Generate points: %p%" );
-
-  while ( provider->nextFeature( feat ) )
-  {
-    geom = feat.geometry();
-    bbox = geom->boundingBox();
-
-    xMin = bbox.xMinimum();
-    xMax = bbox.xMaximum();
-    yMin = bbox.yMinimum();
-    yMax = bbox.yMaximum();
-
-    mapToPixel( xMin, yMax, geoTransform, startRow, startCol);
-    mapToPixel( xMax, yMin, geoTransform, endRow, endCol);
-
-    for ( int row = startRow; row < endRow + 1; row++ )
-    {
-      for ( int col = startCol; col < endCol + 1; col++ )
-      {
-        // create point and test
-        pixelToMap( row - 0.5, col - 0.5, geoTransform, x, y );
-        pnt->setX( x );
-        pnt->setY( y );
-        if ( geom->contains( pnt ) )
-        {
-          ft = new QgsFeature();
-          ft->setGeometry( QgsGeometry::fromPoint( *pnt ) );
-          lstFeatures.append( *ft );
-        }
-      }
-    }
-    // update progress and process messages
-    stepProgress->setValue( stepProgress->value() + 1 );
-    QApplication::processEvents();
-  }
-  // write to memory layer
-  memoryProvider->addFeatures( lstFeatures );
-  pointsLayer->updateExtents();
-
-  stepProgress->setFormat( "%p%" );
-  stepProgress->setRange( 0, 100 );
-  stepProgress->setValue( 0 );
-
-  return pointsLayer;
-}
+//~ QgsVectorLayer* ClassifierDialog::pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName )
+//~ {
+  //~ QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", layerName, "memory" );
+  //~ QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
+  //~ QgsVectorDataProvider *provider = polygonLayer->dataProvider();
+//~ 
+  //~ // TODO: add attributes to provider
+//~ 
+  //~ QgsFeature feat;
+  //~ QgsGeometry* geom;
+  //~ QgsRectangle bbox;
+  //~ double xMin, xMax, yMin, yMax;
+  //~ double startCol, startRow, endCol, endRow;
+  //~ double x, y;
+  //~ QgsPoint* pnt = new QgsPoint();
+  //~ QgsFeature* ft;
+  //~ QgsFeatureList lstFeatures;
+//~ 
+  //~ provider->rewind();
+  //~ provider->select();
+//~ 
+  //~ stepProgress->setRange( 0, provider->featureCount() );
+  //~ stepProgress->setValue( 0 );
+  //~ stepProgress->setFormat( "Generate points: %p%" );
+//~ 
+  //~ while ( provider->nextFeature( feat ) )
+  //~ {
+    //~ geom = feat.geometry();
+    //~ bbox = geom->boundingBox();
+//~ 
+    //~ xMin = bbox.xMinimum();
+    //~ xMax = bbox.xMaximum();
+    //~ yMin = bbox.yMinimum();
+    //~ yMax = bbox.yMaximum();
+//~ 
+    //~ mapToPixel( xMin, yMax, geoTransform, startRow, startCol);
+    //~ mapToPixel( xMax, yMin, geoTransform, endRow, endCol);
+//~ 
+    //~ for ( int row = startRow; row < endRow + 1; row++ )
+    //~ {
+      //~ for ( int col = startCol; col < endCol + 1; col++ )
+      //~ {
+        //~ // create point and test
+        //~ pixelToMap( row - 0.5, col - 0.5, geoTransform, x, y );
+        //~ pnt->setX( x );
+        //~ pnt->setY( y );
+        //~ if ( geom->contains( pnt ) )
+        //~ {
+          //~ ft = new QgsFeature();
+          //~ ft->setGeometry( QgsGeometry::fromPoint( *pnt ) );
+          //~ lstFeatures.append( *ft );
+        //~ }
+      //~ }
+    //~ }
+    //~ // update progress and process messages
+    //~ stepProgress->setValue( stepProgress->value() + 1 );
+    //~ QApplication::processEvents();
+  //~ }
+  //~ // write to memory layer
+  //~ memoryProvider->addFeatures( lstFeatures );
+  //~ pointsLayer->updateExtents();
+//~ 
+  //~ stepProgress->setFormat( "%p%" );
+  //~ stepProgress->setRange( 0, 100 );
+  //~ stepProgress->setValue( 0 );
+//~ 
+  //~ return pointsLayer;
+//~ }
 
 QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName )
 {
@@ -323,14 +323,6 @@ QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, G
   stepProgress->setValue( 0 );
 
   return pointsLayer;
-  
-  //~ col = floor( pixX );
-  //~ row = floor( pixY );
-  //~ inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
-  //~ for (int j = 0; j < bandCount; j++)
-  //~ {
-    //~ cvmSet( data, i, j, rasterData[ j ] );
-  //~ }
 }
 
 void ClassifierDialog::rasterClassification( const QString& rasterFileName )
@@ -410,7 +402,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   GDALDriver *driver;
   driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
   GDALDataset *outRaster;
-  outRaster = driver->Create( mOutputFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
+  outRaster = driver->Create( mOutputFileName.toUtf8(), xSize, ySize, 1, GDT_Byte, NULL );
   outRaster->SetGeoTransform( geotransform );
   outRaster->SetProjection( inRaster->GetProjectionRef() );
   qDebug() << "output raster created";
@@ -539,7 +531,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
   // classify raster using tree
   CvMat* sample = cvCreateMat( bandCount, 1, CV_32F );
-  QVector<float> outData( xSize );
+  QVector<unsigned char> outData( xSize );
 
   stepProgress->setFormat( "Classification: %p%" );
   stepProgress->setRange( 0, ySize );
@@ -565,14 +557,14 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
       if ( rbDecisionTree->isChecked() )
       {
-        outData[ col ] = dtree->predict( sample )->value;
+        outData[ col ] = (unsigned char)dtree->predict( sample )->value;
       }
       else
       {
-        outData[ col ] = rtree->predict( sample );
+        outData[ col ] = (unsigned char)rtree->predict( sample );
       }
     }
-    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Float32, 1, 0, 0, 0, 0 );
+    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Byte, 1, 0, 0, 0 , 0 );
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
