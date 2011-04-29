@@ -125,7 +125,7 @@ void ClassifierDialog::doClassification()
   {
     totalProgress->setRange( 0, 7 );
     rasterClassification2( createSingleBandRaster() );
-    //removeDirectory( QDir().tempPath() + "/dtclassifier" );
+    removeDirectory( QDir().tempPath() + "/dtclassifier" );
   }
   
   totalProgress->setFormat( "Done: %p%" );
