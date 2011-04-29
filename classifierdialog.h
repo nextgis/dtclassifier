@@ -59,6 +59,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     QgsVectorLayer* extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName );
     
     void rasterClassification( const QString& rasterFileName );
+    void rasterClassification2( const QString& rasterFileName );
     
     QString createSingleBandRaster();
 
