@@ -63,7 +63,8 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
 
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
   connect( rastersList, SIGNAL( itemSelectionChanged() ), this, SLOT( updateInputRasters() ) );
-  connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleCheckBoxState( bool ) ) );
+  connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleDiscreteLabelsCheckBoxState( bool ) ) );
+  connect( generalizeCheckBox, SIGNAL( stateChanged( int ) ), this, SLOT( toggleKernelSizeSpinState( int ) ) );
 
   // use Ok button for starting classification
   disconnect( buttonBox, SIGNAL( accepted() ), this, SLOT( accept() ) );
@@ -114,6 +115,9 @@ void ClassifierDialog::doClassification()
   settings.setValue( "addToCanvas", addToCanvasCheckBox->isChecked() );
   settings.setValue( "saveTempLayers", savePointLayersCheckBox->isChecked() );
 
+  settings.setValue( "doGeneralization", generalizeCheckBox->isChecked() );
+  settings.setValue( "kernelSize", spnKernelSize->value() );
+
   totalProgress->setFormat( "%p%" );
   totalProgress->setValue( 0 );
 
@@ -122,13 +126,17 @@ void ClassifierDialog::doClassification()
     totalProgress->setRange( 0, 5 );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     rasterClassification( inputRaster );
-    smoothRaster( mOutputFileName );
   }
   else
   {
     totalProgress->setRange( 0, 7 );
     rasterClassification( createSingleBandRaster() );
     removeDirectory( QDir().tempPath() + "/dtclassifier" );
+  }
+
+  if ( generalizeCheckBox->isChecked() )
+  {
+    smoothRaster( mOutputFileName );
   }
   
   totalProgress->setFormat( "Done: %p%" );
@@ -140,6 +148,13 @@ void ClassifierDialog::doClassification()
     newLayer = new QgsRasterLayer( mOutputFileName, QFileInfo( mOutputFileName ).baseName() );
     applyRasterStyle( newLayer );
     QgsMapLayerRegistry::instance()->addMapLayer( newLayer );
+    
+    QFileInfo fi( mOutputFileName );
+    QString smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth.tif";
+    QgsRasterLayer* smoothLayer;
+    smoothLayer = new QgsRasterLayer( smoothFileName, QFileInfo( smoothFileName ).baseName() );
+    applyRasterStyle( smoothLayer );
+    QgsMapLayerRegistry::instance()->addMapLayer( smoothLayer );
   }
 }
 
@@ -334,7 +349,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
     mapToPixel( mapX, mapY, geotransform, pixX, pixY);
     col = floor( pixX );
     row = floor( pixY );
-    inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
+    inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0, 0 );
     for (int j = 0; j < bandCount; j++)
     {
       cvmSet( data, i, j, rasterData[ j ] );
@@ -366,7 +381,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
     mapToPixel( mapX, mapY, geotransform, pixX, pixY);
     col = floor( pixX );
     row = floor( pixY );
-    inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
+    inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0, 0 );
     for (int j = 0; j < bandCount; j++)
     {
       cvmSet( data, i, j, rasterData[ j ] );
@@ -459,7 +474,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
         outData[ col ] = (char)rtree->predict( sample );
       }
     }
-    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Byte, 1, 0, 0, 0 , 0 );
+    outRaster->RasterIO( GF_Write, 0, row, xSize, 1, (void *)outData.data(), xSize, 1, GDT_Byte, 1, 0, 0, 0, 0 );
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
@@ -487,6 +502,17 @@ void ClassifierDialog::manageGui()
 
   addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", false ).toBool() );
   savePointLayersCheckBox->setChecked( settings.value( "saveTempLayers", false ).toBool() );
+
+  generalizeCheckBox->setChecked( settings.value( "doGeneralization", false ).toBool() );
+  spnKernelSize->setValue( settings.value( "kernelSize", 1 ).toInt() );
+  if ( generalizeCheckBox->isChecked() )
+  {
+    spnKernelSize->setEnabled( true );
+  }
+  else
+  {
+    spnKernelSize->setEnabled( false );
+  }
 
   // classification settings
   QString algorithm = settings.value( "classificationAlg", "dtree" ).toString();
@@ -530,7 +556,7 @@ void ClassifierDialog::manageGui()
   }
 }
 
-void ClassifierDialog::toggleCheckBoxState( bool checked )
+void ClassifierDialog::toggleDiscreteLabelsCheckBoxState( bool checked )
 {
   if ( checked )
   {
@@ -541,6 +567,19 @@ void ClassifierDialog::toggleCheckBoxState( bool checked )
     discreteLabelsCheckBox->setEnabled( false );
   }
 }
+
+void ClassifierDialog::toggleKernelSizeSpinState( int state )
+{
+  if ( state == Qt::Checked )
+  {
+    spnKernelSize->setEnabled( true );
+  }
+  else
+  {
+    spnKernelSize->setEnabled( false );
+  }
+}
+
 
 void ClassifierDialog::updateInputRasters()
 {
@@ -598,51 +637,56 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
 
 void ClassifierDialog::smoothRaster( const QString& path )
 {
-  CvMat* img = cvLoadImageM( path.toUtf8(), CV_LOAD_IMAGE_COLOR ); //CV_LOAD_IMAGE_COLOR CV_LOAD_IMAGE_UNCHANGED
-  int size = 1;
+  CvMat* img = cvLoadImageM( path.toUtf8(), CV_LOAD_IMAGE_UNCHANGED );
+  int size = spnKernelSize->value();
   IplConvKernel* kernel = cvCreateStructuringElementEx( size * 2 + 1, size * 2 + 1, size, size, CV_SHAPE_RECT, 0 );
   
-  //CvMat hdr;
-  //CvMat *dst = cvReshape( img, &hdr, 3, 0 );
-  
-  qDebug() << "Start dilate";
-  cvDilate( img, img, kernel, 2 );
-  cvErode( img, img, kernel, 4 );
   cvDilate( img, img, kernel, 1 );
-  qDebug() << "dilate ok";
+  cvErode( img, img, kernel, 2 );
+  cvDilate( img, img, kernel, 1 );
   
   cvReleaseStructuringElement( &kernel );
   
   // read input raster metadata. We need them to create output raster
-  //~ GDALDataset *inRaster;
-  //~ inRaster = (GDALDataset *) GDALOpen( path.toUtf8(), GA_ReadOnly );
-//~ 
-  //~ double geotransform[6];
-  //~ int xSize, ySize, bandCount;
-  //~ xSize = inRaster->GetRasterXSize();
-  //~ ySize = inRaster->GetRasterYSize();
-  //~ bandCount = inRaster->GetRasterCount();
-  //~ inRaster->GetGeoTransform( geotransform );
+  GDALDataset *inRaster;
+  inRaster = (GDALDataset *) GDALOpen( path.toUtf8(), GA_ReadOnly );
+
+  double geotransform[6];
+  int xSize, ySize, bandCount;
+  xSize = inRaster->GetRasterXSize();
+  ySize = inRaster->GetRasterYSize();
+  bandCount = inRaster->GetRasterCount();
+  inRaster->GetGeoTransform( geotransform );
 
   QFileInfo fi( path );
   QString smoothFileName;
   smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth.tif";
-  cvSaveImage( smoothFileName.toUtf8(), img );
 
+  //~ smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth2.tif";
+  //~ cvSaveImage( smoothFileName.toUtf8(), img );
+
+  //~ CvMat hdr;
+  //~ CvMat *dst = cvReshape( img, &hdr, 1, 1 );
+  //~ IplImage stub, *dstImg;
+  //~ dstImg = cvGetImage( img, &stub );
+  //~ int nPixelSpace = ( dstImg->nChannels ); //* getSizeOf( dstImg->depth );
+	//~ int nLineSpace = dstImg->widthStep - dstImg->width * dstImg->nChannels;// * getSizeOf( dstImg->depth );
+  //~ qDebug() << "Pixel space" << nPixelSpace;
+  //~ qDebug() << "Line space" << nLineSpace;
 
   // create output file
-  //~ GDALDriver *driver;
-  //~ driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
-  //~ GDALDataset *outRaster;
-  //~ outRaster = driver->Create( smoothFileName.toUtf8(), xSize, ySize, 1, GDT_Float32, NULL );
-  //~ outRaster->SetGeoTransform( geotransform );
-  //~ outRaster->SetProjection( inRaster->GetProjectionRef() );
-  //~ 
-  //~ outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, img->data.ptr, xSize, ySize, GDT_Float32, 1, 0, 0, 0, 0 );
+  GDALDriver *driver;
+  driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
+  GDALDataset *outRaster;
+  outRaster = driver->Create( smoothFileName.toUtf8(), xSize, ySize, 1, GDT_Byte, NULL );
+  outRaster->SetGeoTransform( geotransform );
+  outRaster->SetProjection( inRaster->GetProjectionRef() );
+  
+  outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, (void*)img->data.ptr, xSize, ySize, GDT_Byte, 1, 0, 0, 0, 0 );
 
   cvReleaseMat( &img );
-  //~ GDALClose( (GDALDatasetH) inRaster );
-  //~ GDALClose( (GDALDatasetH) outRaster );
+  GDALClose( (GDALDatasetH) inRaster );
+  GDALClose( (GDALDatasetH) outRaster );
 }
 
 QString ClassifierDialog::createSingleBandRaster()
