@@ -643,7 +643,7 @@ void ClassifierDialog::smoothRaster( const QString& path )
   
   cvDilate( img, img, kernel, 1 );
   cvErode( img, img, kernel, 2 );
-  cvDilate( img, img, kernel, 1 );
+  cvDilate( img, img, kernel, 2 );
   
   cvReleaseStructuringElement( &kernel );
   
