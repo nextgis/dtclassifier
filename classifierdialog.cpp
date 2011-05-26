@@ -653,10 +653,17 @@ void ClassifierDialog::smoothRaster( const QString& path )
   IplConvKernel* kernel = cvCreateStructuringElementEx( size * 2 + 1, size * 2 + 1, size, size, CV_SHAPE_RECT, 0 );
   
   cvDilate( img, img, kernel, 1 );
-  cvErode( img, img, kernel, 2 );
-  cvDilate( img, img, kernel, 2 );
+  //cvErode( img, img, kernel, 2 );
+  //cvDilate( img, img, kernel, 1 );
   
   cvReleaseStructuringElement( &kernel );
+  size += 1;
+  kernel = cvCreateStructuringElementEx( size * 2 + 1, size * 2 + 1, size, size, CV_SHAPE_RECT, 0 );
+  cvErode( img, img, kernel, 1 );
+  cvReleaseStructuringElement( &kernel );
+  //~ size = size - 2;
+  //~ kernel = cvCreateStructuringElementEx( size * 2 + 1, size * 2 + 1, size, size, CV_SHAPE_RECT, 0 );
+  //~ cvDilate( img, img, kernel, 1 );
   
   // read input raster metadata. We need them to create output raster
   GDALDataset *inRaster;
