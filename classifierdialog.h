@@ -27,6 +27,8 @@
 
 #include "ui_classifierdialogbase.h"
 
+class GDALDataset;
+
 class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 {
     Q_OBJECT
@@ -54,9 +56,11 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     QStringList mInputRasters;
     QString mOutputFileName;
 
-    QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
+    //QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
+    QgsVectorLayer* extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName );
     
     void rasterClassification( const QString& rasterFileName );
+    void rasterClassification2( const QString& rasterFileName );
     
     QString createSingleBandRaster();
 
