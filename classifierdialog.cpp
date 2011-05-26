@@ -797,18 +797,29 @@ void ClassifierDialog::rasterClassification2( const QString& rasterFileName )
   // use decision tree
   if ( rbDecisionTree->isChecked() )
   {
+    CvDTreeParams params( 8,     // max depth
+                          10,    // min sample count
+                          0,     // regression accuracy
+                          true,  // use surrogates
+                          10,    // max number of categories
+                          10,    // prune tree with K fold cross-validation
+                          false, // use 1 rule
+                          false, // throw away the pruned tree branches
+                          0      // the array of priors, the bigger p_weight, the more attention
+                         );
+    
     // build decision tree classifier
     if ( discreteLabelsCheckBox->isChecked() )
     {
       CvMat* var_type;
       var_type = cvCreateMat( data->cols + 1, 1, CV_8U );
       cvSet( var_type, cvScalarAll(CV_VAR_CATEGORICAL) );
-      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type );
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, var_type, 0, params );
       cvReleaseMat( &var_type );
     }
     else
     {
-      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0 );
+      dtree->train( data, CV_ROW_SAMPLE, responses, 0, 0, 0, 0, params );
     }
 
     QFileInfo fi( mOutputFileName );
