@@ -5,6 +5,7 @@
 SET (CLASSIFIER_SRCS
      classifier.cpp
      classifierdialog.cpp
+     classifierutils.cpp
 )
 
 SET (CLASSIFIER_UIS
@@ -52,6 +53,8 @@ TARGET_LINK_LIBRARIES(classifierplugin
   qgis_gui
   /usr/lib/libopencv_core.so
   /usr/lib/libopencv_ml.so
+  /usr/lib/libopencv_highgui.so
+  /usr/lib/libopencv_imgproc.so
 )
 
 
