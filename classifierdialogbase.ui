@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>377</width>
-    <height>466</height>
+    <height>633</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -37,12 +37,22 @@
    <item>
     <widget class="QLabel" name="label_3">
      <property name="text">
-      <string>Raster to classify</string>
+      <string>Raster(s) to classify</string>
      </property>
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="cmbInputRaster"/>
+    <widget class="QListWidget" name="rastersList">
+     <property name="editTriggers">
+      <set>QAbstractItemView::NoEditTriggers</set>
+     </property>
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::ExtendedSelection</enum>
+     </property>
+    </widget>
    </item>
    <item>
     <widget class="QLabel" name="label_4">
@@ -135,15 +145,43 @@
       <item>
        <widget class="QRadioButton" name="rbRandomTrees">
         <property name="text">
-         <string>Use random trees</string>
+         <string>Use random forest</string>
         </property>
        </widget>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QCheckBox" name="generalizeCheckBox">
+          <property name="text">
+           <string>Generalize resut using kernel size</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QSpinBox" name="spnKernelSize">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>10</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
       </item>
      </layout>
     </widget>
    </item>
    <item>
-    <widget class="QProgressBar" name="progressBar">
+    <widget class="QProgressBar" name="stepProgress">
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QProgressBar" name="totalProgress">
      <property name="value">
       <number>0</number>
      </property>

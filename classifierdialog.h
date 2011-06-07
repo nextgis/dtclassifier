@@ -21,10 +21,13 @@
 #define CLASSIFIERDIALOG_H
 
 #include <QDialog>
+#include <QProcess>
 
 #include "qgisinterface.h"
 
 #include "ui_classifierdialogbase.h"
+
+class GDALDataset;
 
 class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 {
@@ -39,28 +42,35 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
   private slots:
     void selectOutputFile();
     void doClassification();
-    void updateInputFileName();
-    void toggleCheckBoxState( bool checked );
+    void updateInputRasters();
+    //void processFinished( int, QProcess::ExitStatus );
+    void updateStepProgress();
+    void toggleDiscreteLabelsCheckBoxState( bool checked );
+    void toggleKernelSizeSpinState( int state );
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();
     //void on_buttonBox_helpRequested();
 
   private:
     QgisInterface* mIface;
-    QString mInputFileName;
+    QStringList mInputRasters;
     QString mOutputFileName;
 
-    //QStringList* getVectorLayerNames();
-    //QStringList* getRasterLayerNames();
-    QgsVectorLayer* vectorLayerByName( const QString& name );
-    QgsRasterLayer* rasterLayerByName( const QString& name );
-
-    QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
+    //QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
+    QgsVectorLayer* extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName );
+    
+    void rasterClassification( const QString& rasterFileName );
+    void rasterClassification2( const QString& rasterFileName );
+    
+    QString createSingleBandRaster();
 
     void mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY );
     void pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY );
     void applyGeoTransform( double inX, double inY, double* geoTransform, double& outX, double& outY );
     void invertGeoTransform( double* inGeoTransform, double* outGeoTransform);
+
+    void applyRasterStyle( QgsRasterLayer* layer );
+    void smoothRaster( const QString& path );
 
     void manageGui();
     void enableOrDisableOkButton();
