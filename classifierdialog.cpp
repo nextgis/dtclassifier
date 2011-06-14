@@ -51,8 +51,8 @@
 #include "classifierutils.h"
 
 ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
-    : QDialog( parent ),
-    mIface( iface )
+    : QDialog( parent )
+    , mIface( iface )
 {
   setupUi( this );
 
@@ -125,12 +125,15 @@ void ClassifierDialog::doClassification()
   {
     totalProgress->setRange( 0, 5 );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
+    mFileInfo.initFromFileName( inputRaster );
     rasterClassification2( inputRaster );
   }
   else
   {
     totalProgress->setRange( 0, 7 );
-    rasterClassification2( createSingleBandRaster() );
+    QString inputRaster = createSingleBandRaster();
+    mFileInfo.initFromFileName( inputRaster )
+    rasterClassification2( inputRaster );
     removeDirectory( QDir().tempPath() + "/dtclassifier" );
   }
 
@@ -138,7 +141,7 @@ void ClassifierDialog::doClassification()
   {
     smoothRaster( mOutputFileName );
   }
-  
+
   totalProgress->setFormat( "Done: %p%" );
 
   // add classified raster to map canvas if requested
@@ -148,7 +151,7 @@ void ClassifierDialog::doClassification()
     newLayer = new QgsRasterLayer( mOutputFileName, QFileInfo( mOutputFileName ).baseName() );
     applyRasterStyle( newLayer );
     QgsMapLayerRegistry::instance()->addMapLayer( newLayer );
-    
+
     QFileInfo fi( mOutputFileName );
     QString smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth.tif";
     QgsRasterLayer* smoothLayer;
@@ -178,9 +181,9 @@ void ClassifierDialog::on_buttonBox_rejected()
   //~ QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", layerName, "memory" );
   //~ QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
   //~ QgsVectorDataProvider *provider = polygonLayer->dataProvider();
-//~ 
+//~
   //~ // TODO: add attributes to provider
-//~ 
+//~
   //~ QgsFeature feat;
   //~ QgsGeometry* geom;
   //~ QgsRectangle bbox;
@@ -190,27 +193,27 @@ void ClassifierDialog::on_buttonBox_rejected()
   //~ QgsPoint* pnt = new QgsPoint();
   //~ QgsFeature* ft;
   //~ QgsFeatureList lstFeatures;
-//~ 
+//~
   //~ provider->rewind();
   //~ provider->select();
-//~ 
+//~
   //~ stepProgress->setRange( 0, provider->featureCount() );
   //~ stepProgress->setValue( 0 );
   //~ stepProgress->setFormat( "Generate points: %p%" );
-//~ 
+//~
   //~ while ( provider->nextFeature( feat ) )
   //~ {
     //~ geom = feat.geometry();
     //~ bbox = geom->boundingBox();
-//~ 
+//~
     //~ xMin = bbox.xMinimum();
     //~ xMax = bbox.xMaximum();
     //~ yMin = bbox.yMinimum();
     //~ yMax = bbox.yMaximum();
-//~ 
+//~
     //~ mapToPixel( xMin, yMax, geoTransform, startRow, startCol);
     //~ mapToPixel( xMax, yMin, geoTransform, endRow, endCol);
-//~ 
+//~
     //~ for ( int row = startRow; row < endRow + 1; row++ )
     //~ {
       //~ for ( int col = startCol; col < endCol + 1; col++ )
@@ -234,11 +237,11 @@ void ClassifierDialog::on_buttonBox_rejected()
   //~ // write to memory layer
   //~ memoryProvider->addFeatures( lstFeatures );
   //~ pointsLayer->updateExtents();
-//~ 
+//~
   //~ stepProgress->setFormat( "%p%" );
   //~ stepProgress->setRange( 0, 100 );
   //~ stepProgress->setValue( 0 );
-//~ 
+//~
   //~ return pointsLayer;
 //~ }
 
@@ -250,7 +253,7 @@ QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, G
   ySize = inRaster->GetRasterYSize();
   bandCount = inRaster->GetRasterCount();
   inRaster->GetGeoTransform( geoTransform );
-  
+
   // create memory layer
   QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", layerName, "memory" );
   QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
@@ -264,11 +267,11 @@ QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, G
     attrList.append( *field );
   }
   attrList.append( QgsField( "Class", QVariant::Int ) );
-  
+
   bool isOk = memoryProvider->addAttributes( attrList );
   qDebug() << "added attributes" << isOk;
   qDebug() << "field count" << memoryProvider->fieldCount();
-  
+
   // create points
   QgsFeature feat;
   QgsGeometry* geom;
@@ -279,7 +282,7 @@ QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, G
   QgsPoint* pnt = new QgsPoint();
   QgsFeature* ft;
   QgsFeatureList lstFeatures;
-  
+
   QVector<float> rasterData( xSize * bandCount );
 
   provider->rewind();
@@ -359,7 +362,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   ySize = inRaster->GetRasterYSize();
   bandCount = inRaster->GetRasterCount();
   inRaster->GetGeoTransform( geotransform );
-  
+
   qDebug() << "Band count" << bandCount;
 
   totalProgress->setValue( totalProgress->value() + 1 );
@@ -369,9 +372,6 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   //~ QgsVectorLayer *pointsAbsence = pointsFromPolygons( polygonAbsence, geotransform, "pointsAbsence" );
   QgsVectorLayer *pointsPresence = extractPoints( polygonPresence, inRaster, "pointsPresence" );
   QgsVectorLayer *pointsAbsence = extractPoints( polygonAbsence, inRaster, "pointsAbsence" );
-
-  //~ QgsMapLayerRegistry::instance()->addMapLayer( pointsPresence );
-  //~ QgsMapLayerRegistry::instance()->addMapLayer( pointsAbsence );
 
   long featCount = pointsAbsence->featureCount() + pointsPresence->featureCount();
   qDebug() << "Feature count" << featCount;
@@ -442,7 +442,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   QgsVectorDataProvider *provider = pointsPresence->dataProvider();
   provider->rewind();
   provider->select();
-  
+
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "Collect train data: %p%" );
   stepProgress->setRange( 0, provider->featureCount() );
@@ -462,15 +462,9 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
     {
       cvmSet( data, i, j, rasterData[ j ] );
     }
-    //~ cvmSet( data, i, 0, rasterData[0] );
-    //~ cvmSet( data, i, 1, rasterData[1] );
-    //~ cvmSet( data, i, 2, rasterData[2] );
-    //~ cvmSet( data, i, 3, rasterData[3] );
-    //~ cvmSet( data, i, 4, rasterData[4] );
-    //~ cvmSet( data, i, 5, rasterData[5] );
     cvmSet( responses, i, 0, 1 );
     i++;
-    
+
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
@@ -478,7 +472,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   provider = pointsAbsence->dataProvider();
   provider->rewind();
   provider->select();
-  
+
   stepProgress->setRange( 0, provider->featureCount() );
 
   while ( provider->nextFeature( feat ) )
@@ -494,19 +488,13 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
     {
       cvmSet( data, i, j, rasterData[ j ] );
     }
-    //~ cvmSet( data, i, 0, rasterData[0] );
-    //~ cvmSet( data, i, 1, rasterData[1] );
-    //~ cvmSet( data, i, 2, rasterData[2] );
-    //~ cvmSet( data, i, 3, rasterData[3] );
-    //~ cvmSet( data, i, 4, rasterData[4] );
-    //~ cvmSet( data, i, 5, rasterData[5] );
     cvmSet( responses, i, 0, 0 );
     i++;
 
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
-  
+
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "%p%" );
   stepProgress->setRange( 0, 100 );
@@ -528,7 +516,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
                           false, // throw away the pruned tree branches
                           0      // the array of priors, the bigger p_weight, the more attention
                          );
-    
+
     // build decision tree classifier
     if ( discreteLabelsCheckBox->isChecked() )
     {
@@ -577,12 +565,6 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
       {
         cvmSet( sample, j, 0, rasterData[ xSize * j + col ] );
       }
-      //~ cvmSet( sample, 0, 0, rasterData[ col ] );
-      //~ cvmSet( sample, 1, 0, rasterData[ xSize + col ] );
-      //~ cvmSet( sample, 2, 0, rasterData[ xSize*2 + col ] );
-      //~ cvmSet( sample, 3, 0, rasterData[ xSize*3 + col ] );
-      //~ cvmSet( sample, 4, 0, rasterData[ xSize*4 + col ] );
-      //~ cvmSet( sample, 5, 0, rasterData[ xSize*5 + col ] );
 
       if ( rbDecisionTree->isChecked() )
       {
@@ -630,7 +612,7 @@ void ClassifierDialog::rasterClassification2( const QString& rasterFileName )
   ySize = inRaster->GetRasterYSize();
   bandCount = inRaster->GetRasterCount();
   inRaster->GetGeoTransform( geotransform );
-  
+
   qDebug() << "Band count" << bandCount;
 
   totalProgress->setValue( totalProgress->value() + 1 );
@@ -704,44 +686,26 @@ void ClassifierDialog::rasterClassification2( const QString& rasterFileName )
   QgsAttributeList attrList = provider->attributeIndexes();
   provider->rewind();
   provider->select( attrList );
-  
+
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "Collect train data: %p%" );
   stepProgress->setRange( 0, provider->featureCount() );
 
   totalProgress->setValue( totalProgress->value() + 1 );
-  
+
   QgsAttributeMap atMap;
 
   while ( provider->nextFeature( feat ) )
   {
-    //~ pnt = feat.geometry()->asPoint();
-    //~ mapX = pnt.x();
-    //~ mapY = pnt.y();
-    //~ mapToPixel( mapX, mapY, geotransform, pixX, pixY);
-    //~ col = floor( pixX );
-    //~ row = floor( pixY );
-    //~ inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
-    //~ for (int j = 0; j < bandCount; j++)
-    //~ {
-      //~ cvmSet( data, i, j, rasterData[ j ] );
-    //~ }
-    //~ cvmSet( data, i, 0, rasterData[0] );
-    //~ cvmSet( data, i, 1, rasterData[1] );
-    //~ cvmSet( data, i, 2, rasterData[2] );
-    //~ cvmSet( data, i, 3, rasterData[3] );
-    //~ cvmSet( data, i, 4, rasterData[4] );
-    //~ cvmSet( data, i, 5, rasterData[5] );
-    
     atMap = feat.attributeMap();
     for (int j = 0; j < bandCount; j++)
     {
       cvmSet( data, i, j, atMap[ j ].toDouble() );
     }
-    
+
     cvmSet( responses, i, 0, 1 );
     i++;
-    
+
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
@@ -750,42 +714,24 @@ void ClassifierDialog::rasterClassification2( const QString& rasterFileName )
   attrList = provider->attributeIndexes();
   provider->rewind();
   provider->select( attrList );
-  
+
   stepProgress->setRange( 0, provider->featureCount() );
 
   while ( provider->nextFeature( feat ) )
   {
-    //~ pnt = feat.geometry()->asPoint();
-    //~ mapX = pnt.x();
-    //~ mapY = pnt.y();
-    //~ mapToPixel( mapX, mapY, geotransform, pixX, pixY);
-    //~ col = floor( pixX );
-    //~ row = floor( pixY );
-    //~ inRaster->RasterIO( GF_Read, col , row, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0 , 0 );
-    //~ for (int j = 0; j < bandCount; j++)
-    //~ {
-      //~ cvmSet( data, i, j, rasterData[ j ] );
-    //~ }
-    //~ cvmSet( data, i, 0, rasterData[0] );
-    //~ cvmSet( data, i, 1, rasterData[1] );
-    //~ cvmSet( data, i, 2, rasterData[2] );
-    //~ cvmSet( data, i, 3, rasterData[3] );
-    //~ cvmSet( data, i, 4, rasterData[4] );
-    //~ cvmSet( data, i, 5, rasterData[5] );
-
     atMap = feat.attributeMap();
     for (int j = 0; j < bandCount; j++)
     {
       cvmSet( data, i, j, atMap[ j ].toDouble() );
     }
-    
+
     cvmSet( responses, i, 0, 0 );
     i++;
 
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
-  
+
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "%p%" );
   stepProgress->setRange( 0, 100 );
@@ -807,7 +753,7 @@ void ClassifierDialog::rasterClassification2( const QString& rasterFileName )
                           false, // throw away the pruned tree branches
                           0      // the array of priors, the bigger p_weight, the more attention
                          );
-    
+
     // build decision tree classifier
     if ( discreteLabelsCheckBox->isChecked() )
     {
@@ -856,12 +802,6 @@ void ClassifierDialog::rasterClassification2( const QString& rasterFileName )
       {
         cvmSet( sample, j, 0, rasterData[ xSize * j + col ] );
       }
-      //~ cvmSet( sample, 0, 0, rasterData[ col ] );
-      //~ cvmSet( sample, 1, 0, rasterData[ xSize + col ] );
-      //~ cvmSet( sample, 2, 0, rasterData[ xSize*2 + col ] );
-      //~ cvmSet( sample, 3, 0, rasterData[ xSize*3 + col ] );
-      //~ cvmSet( sample, 4, 0, rasterData[ xSize*4 + col ] );
-      //~ cvmSet( sample, 5, 0, rasterData[ xSize*5 + col ] );
 
       if ( rbDecisionTree->isChecked() )
       {
@@ -930,7 +870,7 @@ void ClassifierDialog::manageGui()
   // populate vector layers comboboxes
   QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
   QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
-  
+
   QgsRasterLayer* layer;
 
   for ( ; layer_it != mapLayers.end(); ++layer_it )
@@ -983,9 +923,9 @@ void ClassifierDialog::toggleKernelSizeSpinState( int state )
 void ClassifierDialog::updateInputRasters()
 {
   QList<QListWidgetItem *> selection = rastersList->selectedItems();
-  
+
   mInputRasters.clear();
-  
+
   for ( int i = 0; i < selection.size(); ++i )
   {
     // write file path instead of layer name ?
@@ -1010,7 +950,7 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
   // draw as singleBand image with ColorRampShader
   layer->setDrawingStyle( QgsRasterLayer::SingleBandPseudoColor );
   layer->setColorShadingAlgorithm( QgsRasterLayer::ColorRampShader );
-  
+
   // create color ramp
   QgsColorRampShader* myRasterShaderFunction = ( QgsColorRampShader* )layer->rasterShader()->rasterShaderFunction();
   QList<QgsColorRampShader::ColorRampItem> myColorRampItems;
@@ -1037,22 +977,24 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
 void ClassifierDialog::smoothRaster( const QString& path )
 {
   CvMat* img = cvLoadImageM( path.toUtf8(), CV_LOAD_IMAGE_UNCHANGED );
+  CvMat* outImg = cvCreateMat( img->rows, img->cols, CV_8UC1 );
+
+  // TODO: use user defined kernel size
+  cvSmooth( img, outImg, CV_MEDIAN );
+
+/*
   int size = spnKernelSize->value();
   IplConvKernel* kernel = cvCreateStructuringElementEx( size * 2 + 1, size * 2 + 1, size, size, CV_SHAPE_RECT, 0 );
-  
+
   cvDilate( img, img, kernel, 1 );
-  //cvErode( img, img, kernel, 2 );
-  //cvDilate( img, img, kernel, 1 );
-  
+
   cvReleaseStructuringElement( &kernel );
   size += 1;
   kernel = cvCreateStructuringElementEx( size * 2 + 1, size * 2 + 1, size, size, CV_SHAPE_RECT, 0 );
   cvErode( img, img, kernel, 1 );
   cvReleaseStructuringElement( &kernel );
-  //~ size = size - 2;
-  //~ kernel = cvCreateStructuringElementEx( size * 2 + 1, size * 2 + 1, size, size, CV_SHAPE_RECT, 0 );
-  //~ cvDilate( img, img, kernel, 1 );
-  
+*/
+
   // read input raster metadata. We need them to create output raster
   GDALDataset *inRaster;
   inRaster = (GDALDataset *) GDALOpen( path.toUtf8(), GA_ReadOnly );
@@ -1068,18 +1010,6 @@ void ClassifierDialog::smoothRaster( const QString& path )
   QString smoothFileName;
   smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth.tif";
 
-  //~ smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth2.tif";
-  //~ cvSaveImage( smoothFileName.toUtf8(), img );
-
-  //~ CvMat hdr;
-  //~ CvMat *dst = cvReshape( img, &hdr, 1, 1 );
-  //~ IplImage stub, *dstImg;
-  //~ dstImg = cvGetImage( img, &stub );
-  //~ int nPixelSpace = ( dstImg->nChannels ); //* getSizeOf( dstImg->depth );
-	//~ int nLineSpace = dstImg->widthStep - dstImg->width * dstImg->nChannels;// * getSizeOf( dstImg->depth );
-  //~ qDebug() << "Pixel space" << nPixelSpace;
-  //~ qDebug() << "Line space" << nLineSpace;
-
   // create output file
   GDALDriver *driver;
   driver = GetGDALDriverManager()->GetDriverByName( "GTiff" );
@@ -1087,10 +1017,11 @@ void ClassifierDialog::smoothRaster( const QString& path )
   outRaster = driver->Create( smoothFileName.toUtf8(), xSize, ySize, 1, GDT_Byte, NULL );
   outRaster->SetGeoTransform( geotransform );
   outRaster->SetProjection( inRaster->GetProjectionRef() );
-  
-  outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, (void*)img->data.ptr, xSize, ySize, GDT_Byte, 1, 0, 0, 0, 0 );
+
+  outRaster->RasterIO( GF_Write, 0, 0, xSize, ySize, (void*)outImg->data.ptr, xSize, ySize, GDT_Byte, 1, 0, 0, 0, 0 );
 
   cvReleaseMat( &img );
+  cvReleaseMat( &outImg );
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
 }
@@ -1100,24 +1031,23 @@ QString ClassifierDialog::createSingleBandRaster()
   QString layerName, layerPath;
   GDALDataset* raster;
   int bandCount, rasterCount;
-  
+
   rasterCount = 1;
-  
+
   // create dir for our temp files
   QString tempDir = QDir().tempPath() + "/dtclassifier";
   if ( !QDir().mkpath( tempDir ) )
   {
     qDebug() << "Can't create temporary directory" << tempDir;
   }
-  
+
   QString templateName = tempDir + "/raster_";
   QString rasterName;
-  
+
   QProcess* process = new QProcess();
   QString command = "gdal_translate";
   QStringList args;
-  
-  //connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( processFinished( int, QProcess::ExitStatus ) ) );
+
   connect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateStepProgress() ) );
 
   totalProgress->setValue( totalProgress->value() + 1 );
@@ -1131,19 +1061,19 @@ QString ClassifierDialog::createSingleBandRaster()
     raster = (GDALDataset*) GDALOpen( layerPath.toUtf8(), GA_ReadOnly );
     bandCount = raster->GetRasterCount();
     GDALClose( (GDALDatasetH)raster );
-    
+
     stepProgress->setValue( 0 );
     stepProgress->setFormat( "Preparing " + layerName + ": %p%" );
     stepProgress->setRange( 0, bandCount );
-   
+
     // iterate over bands
     for ( int j = 0; j < bandCount; ++j )
     {
       rasterName = templateName + QString( "%1.tif" ).arg( rasterCount, 2, 10, QChar( 48 ) );
-      
+
       args.clear();
       args << "-b" << QString::number( j + 1 ) << layerPath << rasterName;
-      
+
       process->start( command, args, QIODevice::ReadOnly );
       if ( !process->waitForFinished( -1 ) )
       {
@@ -1156,7 +1086,7 @@ QString ClassifierDialog::createSingleBandRaster()
 
   disconnect( process, SIGNAL( finished( int, QProcess::ExitStatus ) ), this, SLOT( updateStepProgress() ) );
   connect( process, SIGNAL( readyReadStandardOutput() ), this, SLOT( updateStepProgress() ) );
-  
+
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "Merge bands: %p%" );
   stepProgress->setRange( 0, 20 );
@@ -1168,9 +1098,9 @@ QString ClassifierDialog::createSingleBandRaster()
   workDir.setNameFilters( nameFilter );
   QStringList bands = workDir.entryList();
   bands.sort();
-  
+
   rasterName = tempDir + "/output.img";
-  
+
   // merge into single raster
   #ifdef Q_OS_WIN32
     command = "gdal_merge.bat";
@@ -1179,7 +1109,7 @@ QString ClassifierDialog::createSingleBandRaster()
   #endif
   args.clear();
   args << "-separate" << "-of" << "HFA" << "-o" << rasterName << bands;
-  
+
   totalProgress->setValue( totalProgress->value() + 1 );
 
   process->setWorkingDirectory( tempDir );
@@ -1195,15 +1125,9 @@ QString ClassifierDialog::createSingleBandRaster()
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "%p%" );
   stepProgress->setRange( 0, 100 );
-  
+
   return rasterName;
 }
-
-//~ void ClassifierDialog::processFinished( int exitCode, QProcess::ExitStatus exitStatus )
-//~ {
-  //~ stepProgress->setValue( stepProgress->value() + 1 );
-  //~ QApplication::processEvents();
-//~ }
 
 void ClassifierDialog::updateStepProgress()
 {

@@ -6,6 +6,7 @@ SET (CLASSIFIER_SRCS
      classifier.cpp
      classifierdialog.cpp
      classifierutils.cpp
+     rasterfileinfo.cpp
 )
 
 SET (CLASSIFIER_UIS
