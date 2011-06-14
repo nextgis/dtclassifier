@@ -126,14 +126,14 @@ void ClassifierDialog::doClassification()
     totalProgress->setRange( 0, 5 );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     mFileInfo.initFromFileName( inputRaster );
-    rasterClassification2( inputRaster );
+    rasterClassification( inputRaster );
   }
   else
   {
     totalProgress->setRange( 0, 7 );
     QString inputRaster = createSingleBandRaster();
     mFileInfo.initFromFileName( inputRaster );
-    rasterClassification2( inputRaster );
+    rasterClassification( inputRaster );
     removeDirectory( QDir().tempPath() + "/dtclassifier" );
   }
 
@@ -144,7 +144,7 @@ void ClassifierDialog::doClassification()
 
   totalProgress->setFormat( "Done: %p%" );
 
-  // add classified raster to map canvas if requested
+  // add classified rasters to map canvas if requested
   if ( addToCanvasCheckBox->isChecked() )
   {
     QgsRasterLayer* newLayer;
@@ -270,7 +270,7 @@ QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, G
   return pointsLayer;
 }
 
-void ClassifierDialog::rasterClassification2( const QString& rasterFileName )
+void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 {
   QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
   QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
@@ -501,7 +501,6 @@ void ClassifierDialog::rasterClassification2( const QString& rasterFileName )
 
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
-  qDebug() << "raster 2";
 }
 
 void ClassifierDialog::manageGui()
