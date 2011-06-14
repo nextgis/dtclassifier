@@ -59,18 +59,11 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 
     RasterFileInfo mFileInfo;
 
-    //QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
     QgsVectorLayer* extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName );
 
-    void rasterClassification( const QString& rasterFileName );
     void rasterClassification2( const QString& rasterFileName );
 
     QString createSingleBandRaster();
-
-    void mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY );
-    void pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY );
-    void applyGeoTransform( double inX, double inY, double* geoTransform, double& outX, double& outY );
-    void invertGeoTransform( double* inGeoTransform, double* outGeoTransform);
 
     void applyRasterStyle( QgsRasterLayer* layer );
     void smoothRaster( const QString& path );
