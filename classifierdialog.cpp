@@ -61,6 +61,8 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
   // need this for working with rasters
   GDALAllRegister();
 
+  connect( btnMultiPresence, SIGNAL( clicked() ), this, SLOT( selectLayers() ) );
+  connect( btnMultiAbsence, SIGNAL( clicked() ), this, SLOT( selectLayers() ) );
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
   connect( rastersList, SIGNAL( itemSelectionChanged() ), this, SLOT( updateInputRasters() ) );
   connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleDiscreteLabelsCheckBoxState( bool ) ) );
@@ -73,6 +75,40 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
 
 ClassifierDialog::~ClassifierDialog()
 {
+}
+
+void ClassifierDialog::selectLayers()
+{
+  QString senderName = sender()->objectName();
+
+  if ( senderName == "btnMultiPresence" )
+  {
+    if ( btnMultiPresence->isChecked() )
+    {
+      cmbPresenceLayer->setEnabled( true );
+      mPresenceLayers.clear();
+      return;
+    }
+    else
+    {
+      cmbPresenceLayer->setEnabled( false );
+    }
+  }
+  else
+  {
+    if ( btnMultiAbsence->isChecked() )
+    {
+      cmbAbsenceLayer->setEnabled( true );
+      mAbsenceLayers.clear();
+      return;
+    }
+    else
+    {
+      cmbAbsenceLayer->setEnabled( false );
+    }
+  }
+  //~ LayerSelectorDialog dlg( this, &mPresenceLayers );
+  //~ dlg.exec();
 }
 
 void ClassifierDialog::selectOutputFile()
@@ -512,7 +548,7 @@ void ClassifierDialog::manageGui()
   savePointLayersCheckBox->setChecked( settings.value( "saveTempLayers", false ).toBool() );
 
   generalizeCheckBox->setChecked( settings.value( "doGeneralization", false ).toBool() );
-  spnKernelSize->setValue( settings.value( "kernelSize", 1 ).toInt() );
+  spnKernelSize->setValue( settings.value( "kernelSize", 3 ).toInt() );
   if ( generalizeCheckBox->isChecked() )
   {
     spnKernelSize->setEnabled( true );

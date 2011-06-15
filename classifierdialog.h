@@ -42,6 +42,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     static const int context_id = 0;
 
   private slots:
+    void selectLayers();
     void selectOutputFile();
     void doClassification();
     void updateInputRasters();
@@ -54,6 +55,8 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 
   private:
     QgisInterface* mIface;
+    QStringList mPresenceLayers;
+    QStringList mAbsenceLayers;
     QStringList mInputRasters;
     QString mOutputFileName;
 

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>377</width>
-    <height>633</height>
+    <height>641</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,7 +22,21 @@
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="cmbPresenceLayer"/>
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <widget class="QComboBox" name="cmbPresenceLayer"/>
+     </item>
+     <item>
+      <widget class="QToolButton" name="btnMultiPresence">
+       <property name="text">
+        <string>+</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QLabel" name="label_2">
@@ -32,7 +46,21 @@
     </widget>
    </item>
    <item>
-    <widget class="QComboBox" name="cmbAbsenceLayer"/>
+    <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
+      <widget class="QComboBox" name="cmbAbsenceLayer"/>
+     </item>
+     <item>
+      <widget class="QToolButton" name="btnMultiAbsence">
+       <property name="text">
+        <string>+</string>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
    </item>
    <item>
     <widget class="QLabel" name="label_3">
