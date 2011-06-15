@@ -48,6 +48,7 @@
 #include "qgsvectorfilewriter.h"
 
 #include "classifierdialog.h"
+#include "layerselectordialog.h"
 #include "classifierutils.h"
 
 ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
@@ -81,34 +82,37 @@ void ClassifierDialog::selectLayers()
 {
   QString senderName = sender()->objectName();
 
+  LayerSelectorDialog dlg( this );
+
   if ( senderName == "btnMultiPresence" )
   {
     if ( btnMultiPresence->isChecked() )
     {
-      cmbPresenceLayer->setEnabled( true );
-      mPresenceLayers.clear();
-      return;
+      cmbPresenceLayer->setEnabled( false );
+      dlg.setLayerList( &mPresenceLayers );
     }
     else
     {
-      cmbPresenceLayer->setEnabled( false );
+      cmbPresenceLayer->setEnabled( true );
+      mPresenceLayers.clear();
+      return;
     }
   }
   else
   {
     if ( btnMultiAbsence->isChecked() )
     {
+      cmbAbsenceLayer->setEnabled( false );
+      dlg.setLayerList( &mAbsenceLayers );
+    }
+    else
+    {
       cmbAbsenceLayer->setEnabled( true );
       mAbsenceLayers.clear();
       return;
     }
-    else
-    {
-      cmbAbsenceLayer->setEnabled( false );
-    }
   }
-  //~ LayerSelectorDialog dlg( this, &mPresenceLayers );
-  //~ dlg.exec();
+  dlg.exec();
 }
 
 void ClassifierDialog::selectOutputFile()
@@ -160,6 +164,8 @@ void ClassifierDialog::doClassification()
   if ( mInputRasters.count() == 1 )
   {
     totalProgress->setRange( 0, 5 );
+    qDebug() << "LAYERS PRESENCE" << mPresenceLayers.join( "\n" );
+    qDebug() << "LAYERS ABSENCE" << mAbsenceLayers.join( "\n" );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     mFileInfo.initFromFileName( inputRaster );
     rasterClassification( inputRaster );

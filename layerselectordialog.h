@@ -30,7 +30,11 @@ class LayerSelectorDialog : public QDialog, private Ui::LayerSelectorDialogBase
     Q_OBJECT
 
   public:
+    LayerSelectorDialog( QWidget *parent );
     LayerSelectorDialog( QWidget *parent, QStringList *layers );
+    ~LayerSelectorDialog();
+
+    void setLayerList( QStringList *layers );
 
   public slots:
     void updateSelectedLayers();

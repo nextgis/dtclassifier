@@ -22,6 +22,26 @@
 
 #include "layerselectordialog.h"
 
+LayerSelectorDialog::LayerSelectorDialog( QWidget *parent )
+    : QDialog( parent )
+{
+  setupUi( this );
+
+  // additional buttons
+  //~ QPushButton *pb;
+  //~ pb = new QPushButton( tr( "Select all" ) );
+  //~ buttonBox->addButton( pb, QDialogButtonBox::ActionRole );
+  //~ connect( pb, SIGNAL( clicked() ), this, SLOT( selectAll() ) );
+//~
+  //~ pb = new QPushButton( tr( "Clear selection" ) );
+  //~ buttonBox->addButton( pb, QDialogButtonBox::ActionRole );
+  //~ connect( pb, SIGNAL( clicked() ), this, SLOT( clearSelection() ) );
+
+  connect( layersList, SIGNAL( itemSelectionChanged() ), this, SLOT( updateSelectedLayers() ) );
+
+  populateLayers();
+}
+
 LayerSelectorDialog::LayerSelectorDialog( QWidget *parent, QStringList *layers )
     : QDialog( parent )
     , mLayers( layers )
@@ -41,6 +61,15 @@ LayerSelectorDialog::LayerSelectorDialog( QWidget *parent, QStringList *layers )
   connect( layersList, SIGNAL( itemSelectionChanged() ), this, SLOT( updateSelectedLayers() ) );
 
   populateLayers();
+}
+
+LayerSelectorDialog::~LayerSelectorDialog()
+{
+}
+
+void LayerSelectorDialog::setLayerList( QStringList *layers )
+{
+  mLayers = layers;
 }
 
 void LayerSelectorDialog::on_buttonBox_accepted()
