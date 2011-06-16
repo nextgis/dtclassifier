@@ -73,6 +73,20 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 
     void manageGui();
     void enableOrDisableOkButton();
+
+    QgsVectorLayer* createTrainLayer();
+
+    //! merge multiple vectors with different geometry into one point in-memory layer
+    void mergeLayers( QgsVectorLayer* outLayer, const QStringList& layers, GDALDataset* raster, int layerType );
+
+    //! generate points inside polygons and write them to destination layer with pixel values
+    void pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* dst, GDALDataset* raster, int layerType );
+
+    //! copy points with pixel values from source to destination layer
+    void copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDALDataset* raster, int layerType );
+
+    //! create buffers around lines and write them to output layer
+    QgsVectorLayer* createBuffer( QgsVectorLayer* src );
 };
 
 #endif // CLASSIFIERDIALOG_H

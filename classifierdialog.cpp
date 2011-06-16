@@ -164,8 +164,8 @@ void ClassifierDialog::doClassification()
   if ( mInputRasters.count() == 1 )
   {
     totalProgress->setRange( 0, 5 );
-    qDebug() << "LAYERS PRESENCE" << mPresenceLayers.join( "\n" );
-    qDebug() << "LAYERS ABSENCE" << mAbsenceLayers.join( "\n" );
+    //~ qDebug() << "LAYERS PRESENCE" << mPresenceLayers.join( "\n" );
+    //~ qDebug() << "LAYERS ABSENCE" << mAbsenceLayers.join( "\n" );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     mFileInfo.initFromFileName( inputRaster );
     rasterClassification( inputRaster );
@@ -284,7 +284,7 @@ QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, G
           ft = new QgsFeature();
           ft->setGeometry( QgsGeometry::fromPoint( *pnt ) );
           // get pixel value
-          inRaster->RasterIO( GF_Read, row - 0.5, col - 0.5, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, mFileInfo.bandCount(), 0, 0, 0 , 0 );
+          inRaster->RasterIO( GF_Read, row - 0.5, col - 0.5, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, mFileInfo.bandCount(), 0, 0, 0, 0 );
           for ( int i = 0; i < mFileInfo.bandCount(); ++i )
           {
             ft->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
@@ -314,54 +314,49 @@ QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, G
 
 void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 {
-  QgsVectorLayer *polygonPresence = vectorLayerByName( cmbPresenceLayer->currentText() );
-  QgsVectorLayer *polygonAbsence = vectorLayerByName( cmbAbsenceLayer->currentText() );
-
   GDALDataset *inRaster;
   inRaster = (GDALDataset *) GDALOpen( rasterFileName.toUtf8(), GA_ReadOnly );
   qDebug() << "input raster opened";
-
   qDebug() << "Band count" << mFileInfo.bandCount();
 
   totalProgress->setValue( totalProgress->value() + 1 );
 
-  // create points from polygons
-  QgsVectorLayer *pointsPresence = extractPoints( polygonPresence, inRaster, "pointsPresence" );
-  QgsVectorLayer *pointsAbsence = extractPoints( polygonAbsence, inRaster, "pointsAbsence" );
+  // create layer and populate it with train points
+  QgsVectorLayer* trainLayer = createTrainLayer();
+  qDebug() << "TRAIN LAYER CREATED";
 
-  long featCount = pointsAbsence->featureCount() + pointsPresence->featureCount();
+  if ( !btnMultiPresence->isChecked() )
+  {
+    mPresenceLayers.append( cmbPresenceLayer->currentText() );
+  }
+  if ( !btnMultiAbsence->isChecked() )
+  {
+    mAbsenceLayers.append( cmbAbsenceLayer->currentText() );
+  }
+
+  mergeLayers( trainLayer, mPresenceLayers, inRaster, 1 );
+  mergeLayers( trainLayer, mAbsenceLayers, inRaster, 0 );
+  qDebug() << "MERGE LAYERS OK";
+
+  long featCount = trainLayer->featureCount();
   qDebug() << "Feature count" << featCount;
 
-  // save temporary layers on disk if requested
+  // save train layer to disk if requested
   if ( savePointLayersCheckBox->isChecked() )
   {
-    QFileInfo fi( polygonPresence->source() );
+    QgsMapLayerRegistry::instance()->addMapLayer( trainLayer );
+
+    QFileInfo fi( mOutputFileName );
     QString vectorFilename;
-    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + "train_points.shp";
 
     QgsCoordinateReferenceSystem destCRS;
-    destCRS = pointsPresence->crs();
+    destCRS = trainLayer->crs();
 
     QgsVectorFileWriter::WriterError error;
     QString errorMessage;
     error = QgsVectorFileWriter::writeAsVectorFormat(
-              pointsPresence, vectorFilename, "System", &destCRS,
-              "ESRI Shapefile",
-              false,
-              &errorMessage );
-
-    if ( error != QgsVectorFileWriter::NoError )
-    {
-      QMessageBox::warning( this, "Save error", tr( "Export to vector file failed.\nError: %1" ).arg( errorMessage ) );
-    }
-
-    // -- absence layer
-    fi.setFile( polygonAbsence->source() );
-    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_points.shp";
-    destCRS = pointsAbsence->crs();
-
-    error = QgsVectorFileWriter::writeAsVectorFormat(
-              pointsAbsence, vectorFilename, "System", &destCRS,
+              trainLayer, vectorFilename, "System", &destCRS,
               "ESRI Shapefile",
               false,
               &errorMessage );
@@ -394,7 +389,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   CvMat* data = cvCreateMat( featCount, mFileInfo.bandCount(), CV_32F );
   CvMat* responses = cvCreateMat( featCount, 1, CV_32F );
 
-  QgsVectorDataProvider *provider = pointsPresence->dataProvider();
+  QgsVectorDataProvider *provider = trainLayer->dataProvider();
   QgsAttributeList attrList = provider->attributeIndexes();
   provider->rewind();
   provider->select( attrList );
@@ -406,43 +401,24 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   totalProgress->setValue( totalProgress->value() + 1 );
 
   QgsAttributeMap atMap;
+  int bc = mFileInfo.bandCount();
 
   while ( provider->nextFeature( feat ) )
   {
     atMap = feat.attributeMap();
-    for (int j = 0; j < mFileInfo.bandCount(); j++)
+    for (int j = 0; j < bc; j++)
     {
       cvmSet( data, i, j, atMap[ j ].toDouble() );
     }
-
-    cvmSet( responses, i, 0, 1 );
+    cvmSet( responses, i, 0, atMap[ bc ].toDouble() );
     i++;
 
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
 
-  provider = pointsAbsence->dataProvider();
-  attrList = provider->attributeIndexes();
-  provider->rewind();
-  provider->select( attrList );
-
-  stepProgress->setRange( 0, provider->featureCount() );
-
-  while ( provider->nextFeature( feat ) )
-  {
-    atMap = feat.attributeMap();
-    for (int j = 0; j < mFileInfo.bandCount(); j++)
-    {
-      cvmSet( data, i, j, atMap[ j ].toDouble() );
-    }
-
-    cvmSet( responses, i, 0, 0 );
-    i++;
-
-    stepProgress->setValue( stepProgress->value() + 1 );
-    QApplication::processEvents();
-  }
+  //~ cvSave( "/home/alex/data.yaml", data );
+  //~ cvSave( "/home/alex/resp.yaml", responses );
 
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "%p%" );
@@ -507,7 +483,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
   for ( int row = 0; row < mFileInfo.ySize(); ++row )
   {
-    inRaster->RasterIO( GF_Read, 0, row, mFileInfo.xSize(), 1, (void *)rasterData.data(), mFileInfo.xSize(), 1, GDT_Float32, mFileInfo.bandCount(), 0, 0, 0 , 0 );
+    inRaster->RasterIO( GF_Read, 0, row, mFileInfo.xSize(), 1, (void *)rasterData.data(), mFileInfo.xSize(), 1, GDT_Float32, mFileInfo.bandCount(), 0, 0, 0, 0 );
     for ( int col = 0; col < mFileInfo.xSize(); ++col )
     {
       for ( int j = 0; j < mFileInfo.bandCount(); j++)
@@ -524,7 +500,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
         outData[ col ] = (unsigned char)rtree->predict( sample );
       }
     }
-    outRaster->RasterIO( GF_Write, 0, row, mFileInfo.xSize(), 1, (void *)outData.data(), mFileInfo.xSize(), 1, GDT_Byte, 1, 0, 0, 0 , 0 );
+    outRaster->RasterIO( GF_Write, 0, row, mFileInfo.xSize(), 1, (void *)outData.data(), mFileInfo.xSize(), 1, GDT_Byte, 1, 0, 0, 0, 0 );
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
@@ -535,6 +511,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   stepProgress->setFormat( "%p%" );
   stepProgress->setRange( 0, 100 );
   stepProgress->setValue( 0 );
+
   cvReleaseMat( &sample );
   dtree->clear();
   delete dtree;
@@ -588,11 +565,13 @@ void ClassifierDialog::manageGui()
   {
     if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
     {
-      if ( qobject_cast<QgsVectorLayer *>( layer_it.value() )->geometryType() == QGis::Polygon )
-      {
-        cmbPresenceLayer->addItem( layer_it.value()->name() );
-        cmbAbsenceLayer->addItem( layer_it.value()->name() );
-      }
+      cmbPresenceLayer->addItem( layer_it.value()->name() );
+      cmbAbsenceLayer->addItem( layer_it.value()->name() );
+      //~ if ( qobject_cast<QgsVectorLayer *>( layer_it.value() )->geometryType() == QGis::Polygon )
+      //~ {
+        //~ cmbPresenceLayer->addItem( layer_it.value()->name() );
+        //~ cmbAbsenceLayer->addItem( layer_it.value()->name() );
+      //~ }
     }
     else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
     {
@@ -835,4 +814,213 @@ void ClassifierDialog::updateStepProgress()
 {
   stepProgress->setValue( stepProgress->value() + 1 );
   QApplication::processEvents();
+}
+
+//////////////////////////////////////////////////
+//
+// helper methods
+
+QgsVectorLayer* ClassifierDialog::createTrainLayer()
+{
+  // create memory layer
+  QgsVectorLayer* vl = new QgsVectorLayer( "Point", "train_points", "memory" );
+  QgsVectorDataProvider* provider = vl->dataProvider();
+
+  // add attributes to provider
+  QList<QgsField> attrList;
+  for ( int i = 0; i < mFileInfo.bandCount(); ++i )
+  {
+    QgsField* field = new QgsField( QString( "Band_%1").arg( i + 1 ), QVariant::Double );
+    attrList.append( *field );
+  }
+  attrList.append( QgsField( "Class", QVariant::Int ) );
+
+  bool isOk = provider->addAttributes( attrList );
+  qDebug() << "IN FUNCTION added attributes" << isOk;
+  qDebug() << "IN FUNCTION field count" << provider->fieldCount();
+
+  return vl;
+}
+
+void ClassifierDialog::mergeLayers( QgsVectorLayer *outLayer, const QStringList& layers, GDALDataset* raster, int layerType )
+{
+  QgsVectorLayer *vl;
+  // iterate over layers
+  for (int i = 0; i < layers.size(); ++i )
+  {
+    vl = vectorLayerByName( layers.at( i ) );
+    switch ( vl->wkbType() )
+    {
+      // polygon
+      case QGis::WKBPolygon:
+      case QGis::WKBPolygon25D:
+      {
+        pointsFromPolygons( vl, outLayer, raster, layerType );
+        break;
+      }
+      // point
+      case QGis::WKBPoint:
+      case QGis::WKBPoint25D:
+      {
+        copyPoints( vl, outLayer, raster, layerType );
+        break;
+      }
+      // line
+      case QGis::WKBLineString:
+      case QGis::WKBLineString25D:
+      {
+        QgsVectorLayer* poly = createBuffer( vl );
+        pointsFromPolygons( poly, outLayer, raster, layerType );
+        delete poly;
+        break;
+      }
+      default:
+        break;
+    } // switch
+  }
+}
+
+void ClassifierDialog::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* dst, GDALDataset* raster, int layerType )
+{
+  QgsVectorDataProvider *srcProvider = src->dataProvider();
+  QgsVectorDataProvider *dstProvider = dst->dataProvider();
+
+  int bandCount = mFileInfo.bandCount();
+
+  // create points
+  QgsFeature feat;
+  QgsFeature* newFeat;
+  QgsGeometry* geom;
+  QgsRectangle bbox;
+  double xMin, xMax, yMin, yMax;
+  double startCol, startRow, endCol, endRow;
+  double x, y;
+  QgsPoint* pnt = new QgsPoint();
+  QgsFeatureList lstFeatures;
+
+  QVector<float> rasterData( mFileInfo.xSize() * bandCount );
+
+  srcProvider->rewind();
+  srcProvider->select();
+
+  while ( srcProvider->nextFeature( feat ) )
+  {
+    geom = feat.geometry();
+    bbox = geom->boundingBox();
+
+    xMin = bbox.xMinimum();
+    xMax = bbox.xMaximum();
+    yMin = bbox.yMinimum();
+    yMax = bbox.yMaximum();
+
+    mFileInfo.mapToPixel( xMin, yMax, startRow, startCol );
+    mFileInfo.mapToPixel( xMax, yMin, endRow, endCol );
+
+    for ( int row = startRow; row < endRow + 1; row++ )
+    {
+      for ( int col = startCol; col < endCol + 1; col++ )
+      {
+        // create point and test
+        mFileInfo.pixelToMap( row - 0.5, col - 0.5, x, y );
+        pnt->setX( x );
+        pnt->setY( y );
+        if ( geom->contains( pnt ) )
+        {
+          newFeat = new QgsFeature();
+          newFeat->setGeometry( QgsGeometry::fromPoint( *pnt ) );
+          // get pixel value
+          raster->RasterIO( GF_Read, row - 0.5, col - 0.5, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0, 0 );
+          for ( int i = 0; i < bandCount; ++i )
+          {
+            newFeat->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
+          }
+          newFeat->addAttribute( bandCount, QVariant( layerType ) );
+          lstFeatures.append( *newFeat );
+        }
+      }
+    }
+    // update progress and process messages
+    //~ stepProgress->setValue( stepProgress->value() + 1 );
+    QApplication::processEvents();
+  }
+  // write to memory layer
+  dstProvider->addFeatures( lstFeatures );
+  dst->updateExtents();
+  // workaround to save added fetures
+  dst->startEditing();
+  dst->commitChanges();
+}
+
+void ClassifierDialog::copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDALDataset* raster, int layerType )
+{
+  QgsVectorDataProvider* dstProvider = dst->dataProvider();
+  QgsVectorDataProvider* srcProvider = src->dataProvider();
+
+  int bandCount = mFileInfo.bandCount();
+
+  QgsFeature inFeat;
+  QgsFeature* outFeat;
+  QgsGeometry* geom;
+  QgsFeatureList lstFeatures;
+  double col, row;
+
+  QVector<float> rasterData( mFileInfo.xSize() * bandCount );
+
+  srcProvider->rewind();
+  srcProvider->select();
+  while ( srcProvider->nextFeature( inFeat ) )
+  {
+    geom = inFeat.geometry();
+    outFeat = new QgsFeature();
+    outFeat->setGeometry( geom );
+
+    mFileInfo.mapToPixel( geom->asPoint().x(), geom->asPoint().y(), row, col );
+    raster->RasterIO( GF_Read, row - 0.5, col - 0.5, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0, 0 );
+    for ( int i = 0; i < bandCount; ++i )
+    {
+      outFeat->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
+    }
+    outFeat->addAttribute( bandCount, QVariant( layerType ) );
+    lstFeatures.append( *outFeat );
+  }
+  // write to memory layer
+  dstProvider->addFeatures( lstFeatures );
+  dst->updateExtents();
+  // workaround to save added fetures
+  dst->startEditing();
+  dst->commitChanges();
+}
+
+QgsVectorLayer* ClassifierDialog::createBuffer( QgsVectorLayer* src )
+{
+  QgsVectorLayer* dst = new QgsVectorLayer( "Polygon", "buffer", "memory" );
+  QgsVectorDataProvider* dstProvider = dst->dataProvider();
+  QgsVectorDataProvider* srcProvider = src->dataProvider();
+
+  double dist = mFileInfo.pixelSize() / 2;
+
+  QgsFeature inFeat;
+  QgsFeature* outFeat;
+  QgsGeometry* inGeom;
+  QgsGeometry* outGeom;
+  QgsFeatureList lstFeatures;
+
+  srcProvider->rewind();
+  srcProvider->select();
+  while ( srcProvider->nextFeature( inFeat ) )
+  {
+    inGeom = inFeat.geometry();
+    outGeom = inGeom->buffer( dist, 5 );
+    outFeat = new QgsFeature();
+    outFeat->setGeometry( outGeom );
+    lstFeatures.append( *outFeat );
+  }
+  // write to memory layer
+  dstProvider->addFeatures( lstFeatures );
+  dst->updateExtents();
+  // workaround to save added fetures
+  dst->startEditing();
+  dst->commitChanges();
+
+  return dst;
 }
