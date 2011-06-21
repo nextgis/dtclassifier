@@ -500,8 +500,6 @@ void ClassifierDialog::manageGui()
   {
     if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
     {
-      //~ cmbPresenceLayer->addItem( layer_it.value()->name() );
-      //~ cmbAbsenceLayer->addItem( layer_it.value()->name() );
       cmbPresenceLayer->insertItem( 0, layer_it.value()->name() );
       cmbAbsenceLayer->insertItem( 0, layer_it.value()->name() );
     }
@@ -515,8 +513,18 @@ void ClassifierDialog::manageGui()
       rastersList->addItem( new QListWidgetItem( layer_it.value()->name() ) );
     }
   }
-  //~ cmbPresenceLayer->setCurrentIndex( -1 );
-  //~ cmbAbsenceLayer->setCurrentIndex( -1 );
+
+  // display different layers in combos. I don't know why this is so neccessary
+  if ( cmbPresenceLayer->count() > 3 )
+  {
+    cmbPresenceLayer->setCurrentIndex( 0 );
+    cmbAbsenceLayer->setCurrentIndex( 1 );
+  }
+  else
+  {
+    cmbPresenceLayer->setCurrentIndex( -1 );
+    cmbAbsenceLayer->setCurrentIndex( -1 );
+  }
 }
 
 void ClassifierDialog::toggleDiscreteLabelsCheckBoxState( bool checked )
@@ -543,7 +551,7 @@ void ClassifierDialog::toggleKernelSizeSpinState( int state )
   }
 }
 
-void ClassifierDialog::validateSize()
+void ClassifierDialog::validateKernelSize()
 {
   int i = spnKernelSize->value();
   if ( i / 2 )
@@ -554,9 +562,10 @@ void ClassifierDialog::validateSize()
 
 void ClassifierDialog::validateLayer( int index )
 {
+  QString senderName = sender()->objectName();
+
   if ( index == cmbPresenceLayer->count() - 1 )
   {
-    QString senderName = sender()->objectName();
     if ( senderName == "cmbPresenceLayer" )
     {
       cmbPresenceLayer->setCurrentIndex( --index );
@@ -565,6 +574,32 @@ void ClassifierDialog::validateLayer( int index )
     {
       cmbAbsenceLayer->setCurrentIndex( --index );
     }
+  }
+
+  if ( senderName == "cmbPresenceLayer" && index == cmbAbsenceLayer->currentIndex() )
+  {
+    if ( index == cmbPresenceLayer->count() - 2 )
+    {
+      index--;
+    }
+    else
+    {
+      index++;
+    }
+    cmbPresenceLayer->setCurrentIndex( index );
+  }
+
+  if ( senderName == "cmbAbsenceLayer" && index == cmbPresenceLayer->currentIndex() )
+  {
+    if ( index == cmbPresenceLayer->count() - 2 )
+    {
+      index--;
+    }
+    else
+    {
+      index++;
+    }
+    cmbAbsenceLayer->setCurrentIndex( index );
   }
 }
 

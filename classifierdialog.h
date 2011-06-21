@@ -50,7 +50,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void toggleDiscreteLabelsCheckBoxState( bool checked );
     void toggleKernelSizeSpinState( int state );
     void validateLayer( int index );
-    void validateSize();
+    void validateKernelSize();
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();
     //void on_buttonBox_helpRequested();

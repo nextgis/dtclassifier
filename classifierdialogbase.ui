@@ -25,9 +25,6 @@
     <layout class="QHBoxLayout" name="horizontalLayout_4">
      <item>
       <widget class="QComboBox" name="cmbPresenceLayer">
-       <property name="currentIndex">
-        <number>-1</number>
-       </property>
        <item>
         <property name="text">
          <string>[multiple layers]</string>
@@ -58,9 +55,6 @@
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
       <widget class="QComboBox" name="cmbAbsenceLayer">
-       <property name="currentIndex">
-        <number>-1</number>
-       </property>
        <item>
         <property name="text">
          <string>[multiple layers]</string>
