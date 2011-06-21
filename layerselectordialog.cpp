@@ -18,6 +18,7 @@
  ***************************************************************************/
 
 #include "qgsmaplayer.h"
+#include "qgsvectorlayer.h"
 #include "qgsmaplayerregistry.h"
 
 #include "layerselectordialog.h"
@@ -37,7 +38,7 @@ LayerSelectorDialog::LayerSelectorDialog( QWidget *parent )
   //~ buttonBox->addButton( pb, QDialogButtonBox::ActionRole );
   //~ connect( pb, SIGNAL( clicked() ), this, SLOT( clearSelection() ) );
 
-  connect( layersList, SIGNAL( itemSelectionChanged() ), this, SLOT( updateSelectedLayers() ) );
+  connect( treeLayers, SIGNAL( itemSelectionChanged() ), this, SLOT( updateSelectedLayers() ) );
 
   populateLayers();
 }
@@ -58,7 +59,7 @@ LayerSelectorDialog::LayerSelectorDialog( QWidget *parent, QStringList *layers )
   //~ buttonBox->addButton( pb, QDialogButtonBox::ActionRole );
   //~ connect( pb, SIGNAL( clicked() ), this, SLOT( clearSelection() ) );
 
-  connect( layersList, SIGNAL( itemSelectionChanged() ), this, SLOT( updateSelectedLayers() ) );
+  connect( treeLayers, SIGNAL( itemSelectionChanged() ), this, SLOT( updateSelectedLayers() ) );
 
   populateLayers();
 }
@@ -84,6 +85,7 @@ void LayerSelectorDialog::on_buttonBox_rejected()
 
 void LayerSelectorDialog::populateLayers()
 {
+  QgsVectorLayer* layer;
   QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
   QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
 
@@ -91,21 +93,49 @@ void LayerSelectorDialog::populateLayers()
   {
     if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
     {
-      layersList->addItem( new QListWidgetItem( layer_it.value()->name() ) );
+      layer = qobject_cast<QgsVectorLayer *> ( layer_it.value() );
+      QTreeWidgetItem *item = new QTreeWidgetItem( treeLayers );
+      item->setText( 0, layer_it.value()->name() );
+      switch ( layer->wkbType() )
+      {
+        // polygon
+        case QGis::WKBPolygon:
+        case QGis::WKBPolygon25D:
+        {
+          item->setText( 1, "Polygon" );
+          break;
+        }
+        // point
+        case QGis::WKBPoint:
+        case QGis::WKBPoint25D:
+        {
+          item->setText( 1, "Point" );
+          break;
+        }
+        // line
+        case QGis::WKBLineString:
+        case QGis::WKBLineString25D:
+        {
+          item->setText( 1, "Line" );
+          break;
+        }
+        default:
+          break;
+      } // switch
     }
   }
 }
 
 void LayerSelectorDialog::updateSelectedLayers()
 {
-  QList<QListWidgetItem *> selection = layersList->selectedItems();
+  QList<QTreeWidgetItem *> selection = treeLayers->selectedItems();
 
   mLayers->clear();
 
   for ( int i = 0; i < selection.size(); ++i )
   {
     // write file path instead of layer name ?
-    mLayers->append( selection.at( i )->text() );
+    mLayers->append( selection.at( i )->text( 0 ) );
   }
 }
 
