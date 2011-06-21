@@ -24,7 +24,16 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_4">
      <item>
-      <widget class="QComboBox" name="cmbPresenceLayer"/>
+      <widget class="QComboBox" name="cmbPresenceLayer">
+       <property name="currentIndex">
+        <number>-1</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>[multiple layers]</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item>
       <widget class="QToolButton" name="btnMultiPresence">
@@ -48,7 +57,16 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
-      <widget class="QComboBox" name="cmbAbsenceLayer"/>
+      <widget class="QComboBox" name="cmbAbsenceLayer">
+       <property name="currentIndex">
+        <number>-1</number>
+       </property>
+       <item>
+        <property name="text">
+         <string>[multiple layers]</string>
+        </property>
+       </item>
+      </widget>
      </item>
      <item>
       <widget class="QToolButton" name="btnMultiAbsence">

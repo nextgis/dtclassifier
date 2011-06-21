@@ -48,7 +48,8 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void updateInputRasters();
     void updateStepProgress();
     void toggleDiscreteLabelsCheckBoxState( bool checked );
-    void toggleKernelSizeSpinState( int state );\
+    void toggleKernelSizeSpinState( int state );
+    void validateLayer( int index );
     void validateSize();
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();
@@ -62,8 +63,6 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     QString mOutputFileName;
 
     RasterFileInfo mFileInfo;
-
-    QgsVectorLayer* extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName );
 
     void rasterClassification( const QString& rasterFileName );
 

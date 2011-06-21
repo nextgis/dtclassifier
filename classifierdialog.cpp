@@ -62,6 +62,8 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
   // need this for working with rasters
   GDALAllRegister();
 
+  connect( cmbPresenceLayer, SIGNAL( activated( int ) ), this, SLOT( validateLayer( int ) ) );
+  connect( cmbAbsenceLayer, SIGNAL( activated( int ) ), this, SLOT( validateLayer( int ) ) );
   connect( btnMultiPresence, SIGNAL( clicked() ), this, SLOT( selectLayers() ) );
   connect( btnMultiAbsence, SIGNAL( clicked() ), this, SLOT( selectLayers() ) );
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
@@ -89,7 +91,8 @@ void ClassifierDialog::selectLayers()
   {
     if ( btnMultiPresence->isChecked() )
     {
-      cmbPresenceLayer->setEnabled( false );
+      //~ cmbPresenceLayer->setCurrentIndex( cmbPresenceLayer->count() - 1 );
+      //~ cmbPresenceLayer->setEnabled( false );
       dlg.setLayerList( &mPresenceLayers );
     }
     else
@@ -104,7 +107,8 @@ void ClassifierDialog::selectLayers()
   {
     if ( btnMultiAbsence->isChecked() )
     {
-      cmbAbsenceLayer->setEnabled( false );
+      //~ cmbAbsenceLayer->setCurrentIndex( cmbAbsenceLayer->count() - 1 );
+      //~ cmbAbsenceLayer->setEnabled( false );
       dlg.setLayerList( &mAbsenceLayers );
     }
     else
@@ -115,7 +119,33 @@ void ClassifierDialog::selectLayers()
       return;
     }
   }
-  dlg.exec();
+
+  if ( dlg.exec() )
+  {
+    if ( senderName == "btnMultiPresence" && btnMultiPresence->isChecked() )
+    {
+      cmbPresenceLayer->setCurrentIndex( cmbPresenceLayer->count() - 1 );
+      cmbPresenceLayer->setEnabled( false );
+      dlg.setLayerList( &mPresenceLayers );
+    }
+    else if ( senderName == "btnMultiAbsence" && btnMultiAbsence->isChecked() )
+    {
+      cmbAbsenceLayer->setCurrentIndex( cmbAbsenceLayer->count() - 1 );
+      cmbAbsenceLayer->setEnabled( false );
+      dlg.setLayerList( &mAbsenceLayers );
+    }
+  }
+  else
+  {
+    if ( senderName == "btnMultiPresence" && btnMultiPresence->isChecked() )
+    {
+      btnMultiPresence->setChecked( false );
+    }
+    else if ( senderName == "btnMultiAbsence" && btnMultiAbsence->isChecked() )
+    {
+      btnMultiAbsence->setChecked( false );
+    }
+  }
 }
 
 void ClassifierDialog::selectOutputFile()
@@ -167,8 +197,6 @@ void ClassifierDialog::doClassification()
   if ( mInputRasters.count() == 1 )
   {
     totalProgress->setRange( 0, 5 );
-    //~ qDebug() << "LAYERS PRESENCE" << mPresenceLayers.join( "\n" );
-    //~ qDebug() << "LAYERS ABSENCE" << mAbsenceLayers.join( "\n" );
     QString inputRaster = rasterLayerByName( mInputRasters.at( 0 ) )->source();
     mFileInfo.initFromFileName( inputRaster );
     rasterClassification( inputRaster );
@@ -221,100 +249,6 @@ void ClassifierDialog::on_buttonBox_rejected()
   //~ QgsContextHelp::run( context_id );
 //~ }
 
-QgsVectorLayer* ClassifierDialog::extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName )
-{
-  // create memory layer
-  QgsVectorLayer* pointsLayer = new QgsVectorLayer( "Point", layerName, "memory" );
-  QgsVectorDataProvider *memoryProvider = pointsLayer->dataProvider();
-  QgsVectorDataProvider *provider = polygonLayer->dataProvider();
-
-  // add attributes to provider
-  QList<QgsField> attrList;
-  for ( int i = 0; i < mFileInfo.bandCount(); ++i )
-  {
-    QgsField* field = new QgsField( QString( "Band_%1").arg( i + 1 ), QVariant::Double );
-    attrList.append( *field );
-  }
-  attrList.append( QgsField( "Class", QVariant::Int ) );
-
-  bool isOk = memoryProvider->addAttributes( attrList );
-  qDebug() << "added attributes" << isOk;
-  qDebug() << "field count" << memoryProvider->fieldCount();
-
-  // create points
-  QgsFeature feat;
-  QgsGeometry* geom;
-  QgsRectangle bbox;
-  double xMin, xMax, yMin, yMax;
-  double startCol, startRow, endCol, endRow;
-  double x, y;
-  QgsPoint* pnt = new QgsPoint();
-  QgsFeature* ft;
-  QgsFeatureList lstFeatures;
-
-  QVector<float> rasterData( mFileInfo.xSize() * mFileInfo.bandCount() );
-
-  provider->rewind();
-  provider->select();
-
-  stepProgress->setRange( 0, provider->featureCount() );
-  stepProgress->setValue( 0 );
-  stepProgress->setFormat( "Generate points: %p%" );
-
-  while ( provider->nextFeature( feat ) )
-  {
-    geom = feat.geometry();
-    bbox = geom->boundingBox();
-
-    xMin = bbox.xMinimum();
-    xMax = bbox.xMaximum();
-    yMin = bbox.yMinimum();
-    yMax = bbox.yMaximum();
-
-    mFileInfo.mapToPixel( xMin, yMax, startRow, startCol );
-    mFileInfo.mapToPixel( xMax, yMin, endRow, endCol );
-
-    for ( int row = startRow; row < endRow + 1; row++ )
-    {
-      for ( int col = startCol; col < endCol + 1; col++ )
-      {
-        // create point and test
-        mFileInfo.pixelToMap( row - 0.5, col - 0.5, x, y );
-        pnt->setX( x );
-        pnt->setY( y );
-        if ( geom->contains( pnt ) )
-        {
-          ft = new QgsFeature();
-          ft->setGeometry( QgsGeometry::fromPoint( *pnt ) );
-          // get pixel value
-          inRaster->RasterIO( GF_Read, row - 0.5, col - 0.5, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, mFileInfo.bandCount(), 0, 0, 0, 0 );
-          for ( int i = 0; i < mFileInfo.bandCount(); ++i )
-          {
-            ft->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
-          }
-          ft->addAttribute( mFileInfo.bandCount(), QVariant( 1 ) );
-          lstFeatures.append( *ft );
-        }
-      }
-    }
-    // update progress and process messages
-    stepProgress->setValue( stepProgress->value() + 1 );
-    QApplication::processEvents();
-  }
-  // write to memory layer
-  memoryProvider->addFeatures( lstFeatures );
-  pointsLayer->updateExtents();
-  // workaround to save added fetures
-  pointsLayer->startEditing();
-  pointsLayer->commitChanges();
-
-  stepProgress->setFormat( "%p%" );
-  stepProgress->setRange( 0, 100 );
-  stepProgress->setValue( 0 );
-
-  return pointsLayer;
-}
-
 void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 {
   GDALDataset *inRaster;
@@ -326,7 +260,6 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
   // create layer and populate it with train points
   QgsVectorLayer* trainLayer = createTrainLayer();
-  qDebug() << "TRAIN LAYER CREATED";
 
   if ( !btnMultiPresence->isChecked() )
   {
@@ -339,7 +272,6 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
   mergeLayers( trainLayer, mPresenceLayers, inRaster, 1 );
   mergeLayers( trainLayer, mAbsenceLayers, inRaster, 0 );
-  qDebug() << "MERGE LAYERS OK";
 
   long featCount = trainLayer->featureCount();
   qDebug() << "Feature count" << featCount;
@@ -568,8 +500,10 @@ void ClassifierDialog::manageGui()
   {
     if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
     {
-      cmbPresenceLayer->addItem( layer_it.value()->name() );
-      cmbAbsenceLayer->addItem( layer_it.value()->name() );
+      //~ cmbPresenceLayer->addItem( layer_it.value()->name() );
+      //~ cmbAbsenceLayer->addItem( layer_it.value()->name() );
+      cmbPresenceLayer->insertItem( 0, layer_it.value()->name() );
+      cmbAbsenceLayer->insertItem( 0, layer_it.value()->name() );
     }
     else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
     {
@@ -612,13 +546,25 @@ void ClassifierDialog::toggleKernelSizeSpinState( int state )
 void ClassifierDialog::validateSize()
 {
   int i = spnKernelSize->value();
-  qDebug() << "VALIDATE SIZE" << i;
   if ( i / 2 )
   {
-    qDebug() << "ADJUST SIZE";
-    i++;
-    spnKernelSize->setValue( i );
-    qDebug() << "ADJUST SIZE" << i;
+    spnKernelSize->setValue( ++i );
+  }
+}
+
+void ClassifierDialog::validateLayer( int index )
+{
+  if ( index == cmbPresenceLayer->count() - 1 )
+  {
+    QString senderName = sender()->objectName();
+    if ( senderName == "cmbPresenceLayer" )
+    {
+      cmbPresenceLayer->setCurrentIndex( --index );
+    }
+    else
+    {
+      cmbAbsenceLayer->setCurrentIndex( --index );
+    }
   }
 }
 
@@ -681,7 +627,6 @@ void ClassifierDialog::smoothRaster( const QString& path )
   CvMat* img = cvLoadImageM( path.toUtf8(), CV_LOAD_IMAGE_UNCHANGED );
   CvMat* outImg = cvCreateMat( img->rows, img->cols, CV_8UC1 );
 
-  // TODO: use user defined kernel size
   cvSmooth( img, outImg, CV_MEDIAN, spnKernelSize->value() );
 
 /*
@@ -848,9 +793,7 @@ QgsVectorLayer* ClassifierDialog::createTrainLayer()
   }
   attrList.append( QgsField( "Class", QVariant::Int ) );
 
-  bool isOk = provider->addAttributes( attrList );
-  qDebug() << "IN FUNCTION added attributes" << isOk;
-  qDebug() << "IN FUNCTION field count" << provider->fieldCount();
+  provider->addAttributes( attrList );
 
   return vl;
 }
