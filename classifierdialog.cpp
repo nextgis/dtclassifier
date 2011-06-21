@@ -68,6 +68,7 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
   connect( rastersList, SIGNAL( itemSelectionChanged() ), this, SLOT( updateInputRasters() ) );
   connect( rbDecisionTree, SIGNAL( toggled( bool ) ), this, SLOT( toggleDiscreteLabelsCheckBoxState( bool ) ) );
   connect( generalizeCheckBox, SIGNAL( stateChanged( int ) ), this, SLOT( toggleKernelSizeSpinState( int ) ) );
+  connect( spnKernelSize, SIGNAL( editingFinished() ), this, SLOT( validateSize() ) );
 
   // use Ok button for starting classification
   disconnect( buttonBox, SIGNAL( accepted() ), this, SLOT( accept() ) );
@@ -94,6 +95,7 @@ void ClassifierDialog::selectLayers()
     else
     {
       cmbPresenceLayer->setEnabled( true );
+      cmbPresenceLayer->setCurrentIndex( -1 );
       mPresenceLayers.clear();
       return;
     }
@@ -108,6 +110,7 @@ void ClassifierDialog::selectLayers()
     else
     {
       cmbAbsenceLayer->setEnabled( true );
+      cmbAbsenceLayer->setCurrentIndex( -1 );
       mAbsenceLayers.clear();
       return;
     }
@@ -344,11 +347,11 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   // save train layer to disk if requested
   if ( savePointLayersCheckBox->isChecked() )
   {
-    QgsMapLayerRegistry::instance()->addMapLayer( trainLayer );
+    //QgsMapLayerRegistry::instance()->addMapLayer( trainLayer );
 
     QFileInfo fi( mOutputFileName );
     QString vectorFilename;
-    vectorFilename = fi.absoluteDir().absolutePath() + "/" + "train_points.shp";
+    vectorFilename = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_train_points.shp";
 
     QgsCoordinateReferenceSystem destCRS;
     destCRS = trainLayer->crs();
@@ -567,11 +570,6 @@ void ClassifierDialog::manageGui()
     {
       cmbPresenceLayer->addItem( layer_it.value()->name() );
       cmbAbsenceLayer->addItem( layer_it.value()->name() );
-      //~ if ( qobject_cast<QgsVectorLayer *>( layer_it.value() )->geometryType() == QGis::Polygon )
-      //~ {
-        //~ cmbPresenceLayer->addItem( layer_it.value()->name() );
-        //~ cmbAbsenceLayer->addItem( layer_it.value()->name() );
-      //~ }
     }
     else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
     {
@@ -583,6 +581,8 @@ void ClassifierDialog::manageGui()
       rastersList->addItem( new QListWidgetItem( layer_it.value()->name() ) );
     }
   }
+  //~ cmbPresenceLayer->setCurrentIndex( -1 );
+  //~ cmbAbsenceLayer->setCurrentIndex( -1 );
 }
 
 void ClassifierDialog::toggleDiscreteLabelsCheckBoxState( bool checked )
@@ -606,6 +606,19 @@ void ClassifierDialog::toggleKernelSizeSpinState( int state )
   else
   {
     spnKernelSize->setEnabled( false );
+  }
+}
+
+void ClassifierDialog::validateSize()
+{
+  int i = spnKernelSize->value();
+  qDebug() << "VALIDATE SIZE" << i;
+  if ( i / 2 )
+  {
+    qDebug() << "ADJUST SIZE";
+    i++;
+    spnKernelSize->setValue( i );
+    qDebug() << "ADJUST SIZE" << i;
   }
 }
 
@@ -669,7 +682,7 @@ void ClassifierDialog::smoothRaster( const QString& path )
   CvMat* outImg = cvCreateMat( img->rows, img->cols, CV_8UC1 );
 
   // TODO: use user defined kernel size
-  cvSmooth( img, outImg, CV_MEDIAN );
+  cvSmooth( img, outImg, CV_MEDIAN, spnKernelSize->value() );
 
 /*
   int size = spnKernelSize->value();

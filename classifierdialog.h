@@ -48,7 +48,8 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void updateInputRasters();
     void updateStepProgress();
     void toggleDiscreteLabelsCheckBoxState( bool checked );
-    void toggleKernelSizeSpinState( int state );
+    void toggleKernelSizeSpinState( int state );\
+    void validateSize();
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();
     //void on_buttonBox_helpRequested();
