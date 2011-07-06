@@ -128,7 +128,7 @@
    <item>
     <widget class="QCheckBox" name="savePointLayersCheckBox">
      <property name="text">
-      <string>Save points layers to disk</string>
+      <string>Save point layers to disk</string>
      </property>
     </widget>
    </item>
