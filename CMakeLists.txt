@@ -1,3 +1,7 @@
+# set path to additional CMake modules
+SET(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/CMakeModules ${CMAKE_MODULE_PATH})
+
+FIND_PACKAGE(OpenCV REQUIRED)
 
 ########################################################
 # Files
@@ -42,6 +46,7 @@ ADD_LIBRARY (classifierplugin MODULE
 INCLUDE_DIRECTORIES(
      ${CMAKE_CURRENT_BINARY_DIR}
      ${GDAL_INCLUDE_DIR}
+     ${OpenCV_INCLUDE_DIR}
      ../../core/raster
      ../../core/renderer
      ../../core/symbology
@@ -49,16 +54,17 @@ INCLUDE_DIRECTORIES(
      ../../gui
      ..
      .
-     /usr/include/opencv2
+     #/usr/include/opencv2
 )
 
 TARGET_LINK_LIBRARIES(classifierplugin
   qgis_core
   qgis_gui
-  /usr/lib/libopencv_core.so
-  /usr/lib/libopencv_ml.so
-  /usr/lib/libopencv_highgui.so
-  /usr/lib/libopencv_imgproc.so
+  ${OpenCV_LIBS}
+  #/usr/lib/libopencv_core.so
+  #/usr/lib/libopencv_ml.so
+  #/usr/lib/libopencv_highgui.so
+  #/usr/lib/libopencv_imgproc.so
 )
 
 
