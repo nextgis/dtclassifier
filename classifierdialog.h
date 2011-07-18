@@ -25,6 +25,8 @@
 
 #include "qgisinterface.h"
 
+#include "rasterfileinfo.h"
+
 #include "ui_classifierdialogbase.h"
 
 class GDALDataset;
@@ -40,40 +42,51 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     static const int context_id = 0;
 
   private slots:
+    void selectLayers();
     void selectOutputFile();
     void doClassification();
     void updateInputRasters();
-    //void processFinished( int, QProcess::ExitStatus );
     void updateStepProgress();
     void toggleDiscreteLabelsCheckBoxState( bool checked );
     void toggleKernelSizeSpinState( int state );
+    void validateLayer( int index );
+    void validateKernelSize();
     //void on_buttonBox_accepted();
     void on_buttonBox_rejected();
     //void on_buttonBox_helpRequested();
 
   private:
     QgisInterface* mIface;
+    QStringList mPresenceLayers;
+    QStringList mAbsenceLayers;
     QStringList mInputRasters;
     QString mOutputFileName;
 
-    //QgsVectorLayer* pointsFromPolygons( QgsVectorLayer* polygonLayer, double* geoTransform, const QString& layerName );
-    QgsVectorLayer* extractPoints( QgsVectorLayer* polygonLayer, GDALDataset* inRaster, const QString& layerName );
-    
-    void rasterClassification( const QString& rasterFileName );
-    void rasterClassification2( const QString& rasterFileName );
-    
-    QString createSingleBandRaster();
+    RasterFileInfo mFileInfo;
 
-    void mapToPixel( double mX, double mY, double* geoTransform, double& outX, double& outY );
-    void pixelToMap( double pX, double pY, double* geoTransform, double& outX, double& outY );
-    void applyGeoTransform( double inX, double inY, double* geoTransform, double& outX, double& outY );
-    void invertGeoTransform( double* inGeoTransform, double* outGeoTransform);
+    void rasterClassification( const QString& rasterFileName );
+
+    QString createSingleBandRaster();
 
     void applyRasterStyle( QgsRasterLayer* layer );
     void smoothRaster( const QString& path );
 
     void manageGui();
     void enableOrDisableOkButton();
+
+    QgsVectorLayer* createTrainLayer();
+
+    //! merge multiple vectors with different geometry into one point in-memory layer
+    void mergeLayers( QgsVectorLayer* outLayer, const QStringList& layers, GDALDataset* raster, int layerType );
+
+    //! generate points inside polygons and write them to destination layer with pixel values
+    void pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* dst, GDALDataset* raster, int layerType );
+
+    //! copy points with pixel values from source to destination layer
+    void copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDALDataset* raster, int layerType );
+
+    //! create buffers around lines and write them to output layer
+    QgsVectorLayer* createBuffer( QgsVectorLayer* src );
 };
 
 #endif // CLASSIFIERDIALOG_H

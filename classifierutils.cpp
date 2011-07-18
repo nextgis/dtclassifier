@@ -64,7 +64,7 @@ bool removeTempFiles( const QString& path )
 {
   bool hasError = false;
   QDir myDir( path );
-  
+
   myDir.setFilter( QDir::Files | QDir::NoSymLinks | QDir::NoDotAndDotDot );
   QStringList nameFilter( "*.tif" );
   myDir.setNameFilters( nameFilter );
@@ -78,7 +78,7 @@ bool removeTempFiles( const QString& path )
       hasError = true;
     }
   }
-  
+
   return hasError;
 }
 
@@ -102,7 +102,7 @@ QgsRasterLayer* rasterLayerByName( const QString& name )
 {
   QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
   QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
-  
+
   QgsRasterLayer* layer;
 
   for ( ; layer_it != mapLayers.end(); ++layer_it )
