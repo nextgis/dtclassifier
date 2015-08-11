@@ -1,7 +1,7 @@
 # dtclassifier
-DTClassifier plugin for QGIS
+DTClassifier plugin for QGIS. Uses decision trees from OpenCV to classify any kind of rasters with QGIS. Optimized for simplicity of operation.
 
-Currently 1.8 only.
+Currently support QGIS 1.8 only.
 
 More:
 
