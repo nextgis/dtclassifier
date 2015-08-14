@@ -358,8 +358,8 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
     QApplication::processEvents();
   }
 
-  cvSave( "d:\\Development\\NextGIS\\dtclassifier_test\\data.yaml", data );
-  cvSave( "d:\\Development\\NextGIS\\dtclassifier_test\\resp.yaml", responses );
+  // cvSave( "d:\\data.yaml", data );
+  // cvSave( "d:\\resp.yaml", responses );
 
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "%p%" );
