@@ -50,6 +50,7 @@ INCLUDE_DIRECTORIES(
      ../../core/raster
      ../../core/renderer
      ../../core/symbology
+     ../../core/symbology-ng
      ../../core
      ../../gui
      ..

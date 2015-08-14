@@ -110,7 +110,8 @@ QgsRasterLayer* rasterLayerByName( const QString& name )
     if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
     {
       layer = qobject_cast<QgsRasterLayer*> ( layer_it.value() );
-      if ( layer->usesProvider() && layer->providerKey() != "gdal" )
+      //if ( layer->usesProvider() && layer->providerKey() != "gdal" )
+      if ( layer->providerType() != "gdal" )
       {
         continue;
       }

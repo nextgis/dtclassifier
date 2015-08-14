@@ -29,6 +29,9 @@
 
 #include <cmath>
 
+#include <qgsmessagelog.h>
+#include <qgssinglebandpseudocolorrenderer.h>
+
 #include "gdal.h"
 #include "gdal_priv.h"
 #include "cpl_conv.h"
@@ -209,7 +212,6 @@ void ClassifierDialog::doClassification()
     rasterClassification( inputRaster );
     removeDirectory( QDir().tempPath() + "/dtclassifier" );
   }
-
   if ( generalizeCheckBox->isChecked() )
   {
     smoothRaster( mOutputFileName );
@@ -255,7 +257,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   inRaster = (GDALDataset *) GDALOpen( rasterFileName.toUtf8(), GA_ReadOnly );
   qDebug() << "input raster opened";
   qDebug() << "Band count" << mFileInfo.bandCount();
-
+ 
   totalProgress->setValue( totalProgress->value() + 1 );
 
   // create layer and populate it with train points
@@ -275,8 +277,8 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
   long featCount = trainLayer->featureCount();
   qDebug() << "Feature count" << featCount;
-
   // save train layer to disk if requested
+
   if ( savePointLayersCheckBox->isChecked() )
   {
     //QgsMapLayerRegistry::instance()->addMapLayer( trainLayer );
@@ -326,8 +328,8 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
   QgsVectorDataProvider *provider = trainLayer->dataProvider();
   QgsAttributeList attrList = provider->attributeIndexes();
-  provider->rewind();
-  provider->select( attrList );
+  //provider->rewind();
+  //provider->select( attrList );
 
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "Collect train data: %p%" );
@@ -335,25 +337,29 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 
   totalProgress->setValue( totalProgress->value() + 1 );
 
-  QgsAttributeMap atMap;
+  //QgsAttributeMap atMap;
   int bc = mFileInfo.bandCount();
-
-  while ( provider->nextFeature( feat ) )
+  
+  QgsFeatureIterator fit = provider->getFeatures();
+  fit.rewind();
+  while ( fit.nextFeature( feat ) )
   {
-    atMap = feat.attributeMap();
+  //while ( provider->nextFeature( feat ) )
+  //{
+    //atMap = feat.attributeMap();
     for (int j = 0; j < bc; j++)
     {
-      cvmSet( data, i, j, atMap[ j ].toDouble() );
+      cvmSet( data, i, j, feat.attribute(j).toDouble() );
     }
-    cvmSet( responses, i, 0, atMap[ bc ].toDouble() );
+    cvmSet( responses, i, 0, feat.attribute(bc).toDouble() );
     i++;
 
     stepProgress->setValue( stepProgress->value() + 1 );
     QApplication::processEvents();
   }
 
-  //~ cvSave( "/home/alex/data.yaml", data );
-  //~ cvSave( "/home/alex/resp.yaml", responses );
+  cvSave( "d:\\Development\\NextGIS\\dtclassifier_test\\data.yaml", data );
+  cvSave( "d:\\Development\\NextGIS\\dtclassifier_test\\resp.yaml", responses );
 
   stepProgress->setValue( 0 );
   stepProgress->setFormat( "%p%" );
@@ -441,18 +447,16 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   }
 
   totalProgress->setValue( totalProgress->value() + 1 );
-
+  
   // cleanup
   stepProgress->setFormat( "%p%" );
   stepProgress->setRange( 0, 100 );
   stepProgress->setValue( 0 );
-
   cvReleaseMat( &sample );
   dtree->clear();
-  delete dtree;
+  //delete dtree;
   rtree->clear();
-  delete rtree;
-
+  //delete rtree;
   GDALClose( (GDALDatasetH) inRaster );
   GDALClose( (GDALDatasetH) outRaster );
 }
@@ -506,7 +510,8 @@ void ClassifierDialog::manageGui()
     else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
     {
       layer = qobject_cast<QgsRasterLayer *> ( layer_it.value() );
-      if ( layer->usesProvider() && layer->providerKey() != "gdal" )
+      //if ( layer->usesProvider() && layer->providerKey() != "gdal" )
+      if ( layer->providerType() != "gdal" )
       {
         continue;
       }
@@ -631,30 +636,45 @@ void ClassifierDialog::enableOrDisableOkButton()
 void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
 {
   // draw as singleBand image with ColorRampShader
-  layer->setDrawingStyle( QgsRasterLayer::SingleBandPseudoColor );
-  layer->setColorShadingAlgorithm( QgsRasterLayer::ColorRampShader );
-
+  layer->setDrawingStyle( QString("SingleBandPseudoColor") );
+  //layer->setColorShadingAlgorithm( QgsRasterLayer::ColorRampShader );
+  
+  QgsRasterShader* rs = new QgsRasterShader(0.0, 1.0);
+  QgsColorRampShader* crs = new QgsColorRampShader(0.0, 1.0);
+  crs->setColorRampType(QgsColorRampShader::DISCRETE);
+  
   // create color ramp
+  /*
   QgsColorRampShader* myRasterShaderFunction = ( QgsColorRampShader* )layer->rasterShader()->rasterShaderFunction();
+  */
   QList<QgsColorRampShader::ColorRampItem> myColorRampItems;
-
+  
   QgsColorRampShader::ColorRampItem absenceItem, presenceItem;
   absenceItem.value = 0;
   absenceItem.color = QColor( Qt::white );
+  absenceItem.color.setAlpha(0);
   absenceItem.label = "";
 
   presenceItem.value = 1;
   presenceItem.color = QColor( Qt::red );
   presenceItem.label = "";
+  
   myColorRampItems.append( absenceItem );
   myColorRampItems.append( presenceItem );
 
+  crs->setColorRampItemList(myColorRampItems);
+  
+  rs->setRasterShaderFunction(crs);
+  
+  QgsSingleBandPseudoColorRenderer* render = new QgsSingleBandPseudoColorRenderer(layer->dataProvider(), 1, rs);
+  layer->setRenderer(render);
   // sort the shader items
+  /*
   qSort( myColorRampItems );
   myRasterShaderFunction->setColorRampItemList( myColorRampItems );
-
+  */
   // make 0 transparent
-  layer->rasterTransparency()->initializeTransparentPixelList( 0.0 );
+  //layer->rasterTransparency()->initializeTransparentPixelList( 0.0 );
 }
 
 void ClassifierDialog::smoothRaster( const QString& path )
@@ -872,12 +892,12 @@ void ClassifierDialog::mergeLayers( QgsVectorLayer *outLayer, const QStringList&
 }
 
 void ClassifierDialog::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* dst, GDALDataset* raster, int layerType )
-{
+{  
   QgsVectorDataProvider *srcProvider = src->dataProvider();
   QgsVectorDataProvider *dstProvider = dst->dataProvider();
 
   int bandCount = mFileInfo.bandCount();
-
+  
   // create points
   QgsFeature feat;
   QgsFeature* newFeat;
@@ -891,10 +911,13 @@ void ClassifierDialog::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* 
 
   QVector<float> rasterData( mFileInfo.xSize() * bandCount );
 
-  srcProvider->rewind();
-  srcProvider->select();
+  //srcProvider->rewind();
+  //srcProvider->select();
 
-  while ( srcProvider->nextFeature( feat ) )
+  //while ( srcProvider->nextFeature( feat ) )
+  QgsFeatureIterator fit = srcProvider->getFeatures();
+  fit.rewind();
+  while ( fit.nextFeature( feat ) )
   {
     geom = feat.geometry();
     bbox = geom->boundingBox();
@@ -906,7 +929,7 @@ void ClassifierDialog::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* 
 
     mFileInfo.mapToPixel( xMin, yMax, startRow, startCol );
     mFileInfo.mapToPixel( xMax, yMin, endRow, endCol );
-
+    
     for ( int row = startRow; row < endRow + 1; row++ )
     {
       for ( int col = startCol; col < endCol + 1; col++ )
@@ -919,13 +942,16 @@ void ClassifierDialog::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* 
         {
           newFeat = new QgsFeature();
           newFeat->setGeometry( QgsGeometry::fromPoint( *pnt ) );
+          newFeat->initAttributes(bandCount + 1);
           // get pixel value
           raster->RasterIO( GF_Read, row - 0.5, col - 0.5, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0, 0 );
           for ( int i = 0; i < bandCount; ++i )
           {
-            newFeat->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
+            //newFeat->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
+			  newFeat->setAttribute( i, QVariant( (double)rasterData[ i ] ) );
           }
-          newFeat->addAttribute( bandCount, QVariant( layerType ) );
+          //newFeat->addAttribute( bandCount, QVariant( layerType ) );
+		  newFeat->setAttribute( bandCount, QVariant( layerType ) );
           lstFeatures.append( *newFeat );
         }
       }
@@ -957,21 +983,30 @@ void ClassifierDialog::copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDA
 
   QVector<float> rasterData( mFileInfo.xSize() * bandCount );
 
+  /*
   srcProvider->rewind();
   srcProvider->select();
   while ( srcProvider->nextFeature( inFeat ) )
+  */
+  QgsFeatureIterator fit = srcProvider->getFeatures();
+  fit.rewind();
+  while ( fit.nextFeature( inFeat ) )
   {
     geom = inFeat.geometry();
     outFeat = new QgsFeature();
     outFeat->setGeometry( geom );
-
+    outFeat->initAttributes(bandCount + 1);
+    
     mFileInfo.mapToPixel( geom->asPoint().x(), geom->asPoint().y(), row, col );
     raster->RasterIO( GF_Read, row - 0.5, col - 0.5, 1, 1, (void*)rasterData.data(), 1, 1, GDT_Float32, bandCount, 0, 0, 0, 0 );
     for ( int i = 0; i < bandCount; ++i )
     {
-      outFeat->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
+      //outFeat->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
+	  outFeat->setAttribute( i, QVariant( (double)rasterData[ i ] ) );
     }
-    outFeat->addAttribute( bandCount, QVariant( layerType ) );
+//    outFeat->addAttribute( bandCount, QVariant( layerType ) );
+	outFeat->setAttribute( bandCount, QVariant( layerType ) );
+
     lstFeatures.append( *outFeat );
   }
   // write to memory layer
@@ -996,9 +1031,12 @@ QgsVectorLayer* ClassifierDialog::createBuffer( QgsVectorLayer* src )
   QgsGeometry* outGeom;
   QgsFeatureList lstFeatures;
 
-  srcProvider->rewind();
-  srcProvider->select();
-  while ( srcProvider->nextFeature( inFeat ) )
+  //srcProvider->rewind();
+  //srcProvider->select();
+  //while ( srcProvider->nextFeature( inFeat ) )
+  QgsFeatureIterator fit = srcProvider->getFeatures();
+  fit.rewind();
+  while ( fit.nextFeature( inFeat ) )
   {
     inGeom = inFeat.geometry();
     outGeom = inGeom->buffer( dist, 5 );

@@ -22,6 +22,7 @@
 
 #include <qgisinterface.h>
 #include <qgisgui.h>
+#include <qgsmessagelog.h>
 
 #include "classifier.h"
 #include "classifierdialog.h"
