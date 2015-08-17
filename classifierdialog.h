@@ -51,19 +51,17 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void toggleKernelSizeSpinState( int state );
     void validateLayer( int index );
     void validateKernelSize();
-    //void on_buttonBox_accepted();
-    void on_buttonBox_rejected();
-    //void on_buttonBox_helpRequested();
 
   private:
     QgisInterface* mIface;
+	QString mMultLayersSelectText;
     QStringList mPresenceLayers;
     QStringList mAbsenceLayers;
     QStringList mInputRasters;
     QString mOutputFileName;
 
     RasterFileInfo mFileInfo;
-
+	
     void rasterClassification( const QString& rasterFileName );
 
     QString createSingleBandRaster();

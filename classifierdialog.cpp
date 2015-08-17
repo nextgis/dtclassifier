@@ -60,6 +60,11 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
 {
   setupUi( this );
 
+  mMultLayersSelectText = tr( "[multiple layers]" );
+
+  cmbPresenceLayer->clear();
+  cmbAbsenceLayer->clear();
+
   manageGui();
 
   // need this for working with rasters
@@ -78,6 +83,8 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
   // use Ok button for starting classification
   disconnect( buttonBox, SIGNAL( accepted() ), this, SLOT( accept() ) );
   connect( buttonBox, SIGNAL( accepted() ), this, SLOT( doClassification() ) );
+  connect( buttonBox, SIGNAL( rejected() ), this, SLOT( reject() ) );
+
 }
 
 ClassifierDialog::~ClassifierDialog()
@@ -100,6 +107,7 @@ void ClassifierDialog::selectLayers()
     }
     else
     {
+	  cmbPresenceLayer->removeItem( cmbPresenceLayer->count() - 1 );
       cmbPresenceLayer->setEnabled( true );
       cmbPresenceLayer->setCurrentIndex( -1 );
       mPresenceLayers.clear();
@@ -116,6 +124,7 @@ void ClassifierDialog::selectLayers()
     }
     else
     {
+	  cmbAbsenceLayer->removeItem( cmbAbsenceLayer->count() - 1 );
       cmbAbsenceLayer->setEnabled( true );
       cmbAbsenceLayer->setCurrentIndex( -1 );
       mAbsenceLayers.clear();
@@ -127,12 +136,14 @@ void ClassifierDialog::selectLayers()
   {
     if ( senderName == "btnMultiPresence" && btnMultiPresence->isChecked() )
     {
+	  cmbPresenceLayer->insertItem(cmbPresenceLayer->count(), mMultLayersSelectText);
       cmbPresenceLayer->setCurrentIndex( cmbPresenceLayer->count() - 1 );
       cmbPresenceLayer->setEnabled( false );
       dlg.setLayerList( &mPresenceLayers );
     }
     else if ( senderName == "btnMultiAbsence" && btnMultiAbsence->isChecked() )
     {
+	  cmbAbsenceLayer->insertItem(cmbAbsenceLayer->count(), mMultLayersSelectText);
       cmbAbsenceLayer->setCurrentIndex( cmbAbsenceLayer->count() - 1 );
       cmbAbsenceLayer->setEnabled( false );
       dlg.setLayerList( &mAbsenceLayers );
@@ -184,6 +195,12 @@ void ClassifierDialog::selectOutputFile()
 
 void ClassifierDialog::doClassification()
 {
+  if (leOutputRaster->text().isEmpty()) 
+  {
+    leOutputRaster->setPlaceholderText( tr("Please, choose output file!") );
+	return;
+  }
+
   // save checkboxes state
   QSettings settings( "NextGIS", "DTclassifier" );
 
@@ -235,21 +252,6 @@ void ClassifierDialog::doClassification()
     QgsMapLayerRegistry::instance()->addMapLayer( smoothLayer );
   }
 }
-
-//~ void ClassifierDialog::on_buttonBox_accepted()
-//~ {
-  //~ accept();
-//~ }
-
-void ClassifierDialog::on_buttonBox_rejected()
-{
-  reject();
-}
-
-//~ void ClassifierDialog::on_buttonBox_helpRequested()
-//~ {
-  //~ QgsContextHelp::run( context_id );
-//~ }
 
 void ClassifierDialog::rasterClassification( const QString& rasterFileName )
 {
@@ -498,25 +500,32 @@ void ClassifierDialog::manageGui()
   QMap<QString, QgsMapLayer*> mapLayers = QgsMapLayerRegistry::instance()->mapLayers();
   QMap<QString, QgsMapLayer*>::iterator layer_it = mapLayers.begin();
 
-  QgsRasterLayer* layer;
+  if ( mapLayers.count() == 0)
+  {
+	cmbPresenceLayer->setEnabled( false );
+	cmbAbsenceLayer->setEnabled( false );
+	btnMultiPresence->setEnabled( false );
+	btnMultiAbsence->setEnabled( false );
+	return;
+  }
 
   for ( ; layer_it != mapLayers.end(); ++layer_it )
   {
-    if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
-    {
-      cmbPresenceLayer->insertItem( 0, layer_it.value()->name() );
-      cmbAbsenceLayer->insertItem( 0, layer_it.value()->name() );
-    }
-    else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
-    {
-      layer = qobject_cast<QgsRasterLayer *> ( layer_it.value() );
-      //if ( layer->usesProvider() && layer->providerKey() != "gdal" )
-      if ( layer->providerType() != "gdal" )
-      {
-        continue;
-      }
-      rastersList->addItem( new QListWidgetItem( layer_it.value()->name() ) );
-    }
+	if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
+	{
+	  cmbPresenceLayer->insertItem( 0, layer_it.value()->name() );
+	  cmbAbsenceLayer->insertItem( 0, layer_it.value()->name() );
+	}
+	else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
+	{
+	  QgsRasterLayer* layer = qobject_cast<QgsRasterLayer *> ( layer_it.value() );
+
+	  if ( layer->providerType() != "gdal" ) //if ( layer->usesProvider() && layer->providerKey() != "gdal" )
+	  {
+		continue;
+	  }
+	  rastersList->addItem( new QListWidgetItem( layer_it.value()->name() ) );
+	}
   }
 
   // display different layers in combos. I don't know why this is so neccessary
@@ -829,9 +838,6 @@ void ClassifierDialog::updateStepProgress()
   QApplication::processEvents();
 }
 
-//////////////////////////////////////////////////
-//
-// helper methods
 
 QgsVectorLayer* ClassifierDialog::createTrainLayer()
 {
