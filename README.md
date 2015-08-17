@@ -7,3 +7,6 @@ More:
 
 * RU - http://gis-lab.info/qa/dtclassifier.html
 * EN - https://translate.google.com/translate?sl=ru&tl=en&js=y&prev=_t&hl=en&ie=UTF-8&u=http%3A%2F%2Fgis-lab.info%2Fqa%2Fdtclassifier.html&edit-text=
+
+
+Icon by by d͡ʒɛrmi Good https://thenounproject.com/term/light-and-dark/94012/
