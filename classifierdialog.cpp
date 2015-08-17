@@ -241,14 +241,14 @@ void ClassifierDialog::doClassification()
   {
     QgsRasterLayer* newLayer;
     newLayer = new QgsRasterLayer( mOutputFileName, QFileInfo( mOutputFileName ).baseName() );
-    applyRasterStyle( newLayer );
+    applyRasterStyle( newLayer, Qt::red);
     QgsMapLayerRegistry::instance()->addMapLayer( newLayer );
 
     QFileInfo fi( mOutputFileName );
     QString smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth.tif";
     QgsRasterLayer* smoothLayer;
     smoothLayer = new QgsRasterLayer( smoothFileName, QFileInfo( smoothFileName ).baseName() );
-    applyRasterStyle( smoothLayer );
+	applyRasterStyle( smoothLayer, Qt::blue );
     QgsMapLayerRegistry::instance()->addMapLayer( smoothLayer );
   }
 }
@@ -468,7 +468,7 @@ void ClassifierDialog::manageGui()
   // restore ui state from settings
   QSettings settings( "NextGIS", "DTclassifier" );
 
-  addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", false ).toBool() );
+  addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", true ).toBool() );
   savePointLayersCheckBox->setChecked( settings.value( "saveTempLayers", false ).toBool() );
 
   generalizeCheckBox->setChecked( settings.value( "doGeneralization", false ).toBool() );
@@ -642,7 +642,7 @@ void ClassifierDialog::enableOrDisableOkButton()
   buttonBox->button( QDialogButtonBox::Ok )->setEnabled( enabled );
 }
 
-void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
+void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer, const QColor resColor)
 {
   // draw as singleBand image with ColorRampShader
   layer->setDrawingStyle( QString("SingleBandPseudoColor") );
@@ -665,7 +665,7 @@ void ClassifierDialog::applyRasterStyle( QgsRasterLayer* layer )
   absenceItem.label = "";
 
   presenceItem.value = 1;
-  presenceItem.color = QColor( Qt::red );
+  presenceItem.color = resColor;
   presenceItem.label = "";
   
   myColorRampItems.append( absenceItem );

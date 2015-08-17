@@ -66,7 +66,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 
     QString createSingleBandRaster();
 
-    void applyRasterStyle( QgsRasterLayer* layer );
+    void applyRasterStyle( QgsRasterLayer* layer, const QColor resColor );
     void smoothRaster( const QString& path );
 
     void manageGui();
