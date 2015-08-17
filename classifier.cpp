@@ -29,11 +29,15 @@
 
 static const QString _name = QObject::tr( "DTclassifier" );
 static const QString _description = QObject::tr( "Raster classification using decision tree" );
+static const QString _category = QObject::tr( "Raster" );
 static const QString _version = QObject::tr( "Version 0.4.0" );
 static const QString _icon = ":/classifier/icons/classifier.png";
 
-Classifier::Classifier( QgisInterface* iface )
-    : mIface( iface ), mActionClassify( 0 ), mActionAbout( 0 )
+Classifier::Classifier( QgisInterface* iface ):
+	QgisPlugin( _name, _description, _category, _version, QgisPlugin::UI ),
+	mIface( iface ),
+	mActionClassify( 0 ),
+	mActionAbout( 0 )
 {
 }
 
@@ -82,7 +86,7 @@ void Classifier::unload()
   delete mActionAbout;
 }
 
-QGISEXTERN QgisPlugin * classFactory( QgisInterface * theQgisInterfacePointer )
+QGISEXTERN QgisPlugin* classFactory( QgisInterface * theQgisInterfacePointer )
 {
   return new Classifier( theQgisInterfacePointer );
 }
@@ -97,9 +101,9 @@ QGISEXTERN QString description()
   return _description;
 }
 
-QGISEXTERN int type()
+QGISEXTERN QString category()
 {
-  return QgisPlugin::UI;
+  return _category;
 }
 
 QGISEXTERN QString version()
@@ -110,6 +114,11 @@ QGISEXTERN QString version()
 QGISEXTERN QString icon()
 {
   return _icon;
+}
+
+QGISEXTERN int type()
+{
+  return QgisPlugin::UI;
 }
 
 QGISEXTERN void unload( QgisPlugin * thePluginPointer )
