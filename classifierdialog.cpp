@@ -468,7 +468,8 @@ void ClassifierDialog::manageGui()
   // restore ui state from settings
   QSettings settings( "NextGIS", "DTclassifier" );
 
-  addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", true ).toBool() );
+  //addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", true ).toBool() );
+  addToCanvasCheckBox->setChecked(true)
   savePointLayersCheckBox->setChecked( settings.value( "saveTempLayers", false ).toBool() );
 
   generalizeCheckBox->setChecked( settings.value( "doGeneralization", false ).toBool() );
