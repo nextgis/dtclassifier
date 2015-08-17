@@ -263,7 +263,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   totalProgress->setValue( totalProgress->value() + 1 );
 
   // create layer and populate it with train points
-  QgsVectorLayer* trainLayer = createTrainLayer();
+  QgsVectorLayer* trainLayer = createTrainLayer();  
 
   if ( !btnMultiPresence->isChecked() )
   {
@@ -469,7 +469,7 @@ void ClassifierDialog::manageGui()
   QSettings settings( "NextGIS", "DTclassifier" );
 
   //addToCanvasCheckBox->setChecked( settings.value( "addToCanvas", true ).toBool() );
-  addToCanvasCheckBox->setChecked(true)
+  addToCanvasCheckBox->setChecked(true);
   savePointLayersCheckBox->setChecked( settings.value( "saveTempLayers", false ).toBool() );
 
   generalizeCheckBox->setChecked( settings.value( "doGeneralization", false ).toBool() );
@@ -843,7 +843,17 @@ void ClassifierDialog::updateStepProgress()
 QgsVectorLayer* ClassifierDialog::createTrainLayer()
 {
   // create memory layer
-  QgsVectorLayer* vl = new QgsVectorLayer( "Point", "train_points", "memory" );
+  QgsCoordinateReferenceSystem srcCRS(mFileInfo.projection());
+
+	//QgsMessageLog::logMessage(QString("ClassifierDialog::createTrainLayer 1: %1").arg(srcCRS.authid()), "DTClassifire");
+	//QgsMessageLog::logMessage(QString("ClassifierDialog::createTrainLayer 1: %1").arg(srcCRS.geographicCRSAuthId()), "DTClassifire");
+	//QgsMessageLog::logMessage(QString("ClassifierDialog::createTrainLayer 1: %1").arg(srcCRS.postgisSrid()), "DTClassifire");
+	//QgsMessageLog::logMessage(QString("ClassifierDialog::createTrainLayer 1: %1").arg(srcCRS.srsid()), "DTClassifire");
+
+  QgsVectorLayer* vl = new QgsVectorLayer( QString("Point?crs=%1").arg(srcCRS.authid()), "train_points", "memory" );
+
+  //QgsMessageLog::logMessage("ClassifierDialog::createTrainLayer 2", "DTClassifire");
+
   QgsVectorDataProvider* provider = vl->dataProvider();
 
   // add attributes to provider
