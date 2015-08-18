@@ -26,12 +26,14 @@
 
 #include "classifier.h"
 #include "classifierdialog.h"
+#include "aboutdialog.h"
 
 static const QString _name = QObject::tr( "DTclassifier" );
 static const QString _description = QObject::tr( "Raster classification using decision tree" );
 static const QString _category = QObject::tr( "Raster" );
-static const QString _version = QObject::tr( "Version 0.4.1" );
+static const QString _version = QString( "0.4.1" );
 static const QString _icon = ":/classifier/icons/classifier.png";
+static const QString _icon_48x48 = ":/classifier/icons/classifier_48x48.png";
 
 Classifier::Classifier( QgisInterface* iface ):
 	QgisPlugin( _name, _description, _category, _version, QgisPlugin::UI ),
@@ -74,7 +76,8 @@ void Classifier::showMainDialog()
 
 void Classifier::showAboutDialog()
 {
-  // TODO: implement me!
+  AboutDialog dlg(0);
+  dlg.exec();
 }
 
 void Classifier::unload()

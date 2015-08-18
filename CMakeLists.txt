@@ -12,17 +12,20 @@ SET (CLASSIFIER_SRCS
      classifierutils.cpp
      rasterfileinfo.cpp
      layerselectordialog.cpp
+     aboutdialog.cpp
 )
 
 SET (CLASSIFIER_UIS
      classifierdialogbase.ui
      layerselectordialogbase.ui
+     about.ui
 )
 
 SET (CLASSIFIER_MOC_HDRS
      classifier.h
      classifierdialog.h
      layerselectordialog.h
+     aboutdialog.h
 )
 
 SET (CLASSIFIER_RCCS  classifier.qrc)
