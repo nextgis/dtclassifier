@@ -26,6 +26,7 @@
 #include <QApplication>
 #include <QList>
 #include <QDir>
+#include <QToolTip>
 
 #include <cmath>
 
@@ -81,6 +82,8 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
   connect( spnKernelSize, SIGNAL( editingFinished() ), this, SLOT( validateSize() ) );
 
   // use Ok button for starting classification
+  buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Run"));
+
   disconnect( buttonBox, SIGNAL( accepted() ), this, SLOT( accept() ) );
   connect( buttonBox, SIGNAL( accepted() ), this, SLOT( doClassification() ) );
   connect( buttonBox, SIGNAL( rejected() ), this, SLOT( reject() ) );
@@ -109,7 +112,7 @@ void ClassifierDialog::selectLayers()
     {
 	  cmbPresenceLayer->removeItem( cmbPresenceLayer->count() - 1 );
       cmbPresenceLayer->setEnabled( true );
-      cmbPresenceLayer->setCurrentIndex( -1 );
+      cmbPresenceLayer->setCurrentIndex( 0 );
       mPresenceLayers.clear();
       return;
     }
@@ -126,7 +129,7 @@ void ClassifierDialog::selectLayers()
     {
 	  cmbAbsenceLayer->removeItem( cmbAbsenceLayer->count() - 1 );
       cmbAbsenceLayer->setEnabled( true );
-      cmbAbsenceLayer->setCurrentIndex( -1 );
+      cmbAbsenceLayer->setCurrentIndex( 0 );
       mAbsenceLayers.clear();
       return;
     }
@@ -195,11 +198,36 @@ void ClassifierDialog::selectOutputFile()
 
 void ClassifierDialog::doClassification()
 {
+  buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
+
+  bool is_valid = true;
+
   if (leOutputRaster->text().isEmpty()) 
   {
     leOutputRaster->setPlaceholderText( tr("Please, choose output file!") );
-	return;
+	leOutputRaster->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
+	is_valid = false;
   }
+  else
+  {
+	leOutputRaster->setStyleSheet("");
+  }
+
+  if (rastersList->selectedItems().count() == 0)
+  {
+    rastersList->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
+	QPoint point = QPoint(geometry().left() + rastersList->geometry().left(),
+                              geometry().top() + rastersList->geometry().top());
+	QToolTip::showText(point, tr("Select one or more layers!"));
+	is_valid = false;
+  }
+  else
+  {
+	rastersList->setStyleSheet("");
+  }
+
+  if (is_valid == false)
+	  return;
 
   // save checkboxes state
   QSettings settings( "NextGIS", "DTclassifier" );
@@ -251,6 +279,8 @@ void ClassifierDialog::doClassification()
 	applyRasterStyle( smoothLayer, Qt::blue );
     QgsMapLayerRegistry::instance()->addMapLayer( smoothLayer );
   }
+
+  buttonBox->button(QDialogButtonBox::Ok)->setEnabled(true);
 }
 
 void ClassifierDialog::rasterClassification( const QString& rasterFileName )

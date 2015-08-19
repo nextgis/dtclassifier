@@ -29,10 +29,23 @@ AboutDialog::AboutDialog( QWidget *parent)
   verticalLayout->setSizeConstraint(QLayout::SetFixedSize);
 
   QString title = QString("%1 %2").arg(tr("About")).arg(_name);
-  this->setWindowTitle(title);
-  
-  lIcon->setPixmap(QPixmap(_icon_48x48));
-  
-  QString html = QString("<div> <h2>%1</h2> </div> <div> %2: <strong>%3</strong></div><div> %4</div> <br/>").arg(title).arg(tr("Version")).arg(_version).arg(_description);
+  QString version = QString("%2: <strong>%3</strong>").arg(tr("Version"), _version);
+  QString developers = QString("%1: <a href=\"%3\"> %2 </a>").arg(tr("Developers"), _developers_name,_developers_site);
+  QString homepage = QString("%1: <a href=\"%2\"> %2 </a>").arg(tr("Homepage"), _home_page);
+  QString bagtraking = QString("%1 <a href=\"%3\"> %2 </a>").arg(tr("Please report bugs at"), tr("bugtracker"), _bagtracker_page);
+
+  QString html("");
+  html += QString("<h2> %1 </h2>").arg(title);
+  html += QString("<div> %1 </div>").arg(version);
+  html += QString("<div> %1 </div>").arg(_description);
+  html += QString("<div> %1 </div>").arg(_ext_description);
+  html += QString("<br/><div> %1 </div>").arg(developers);
+  html += QString("<div> %1 </div>").arg(homepage);
+  html += QString("<div> %1 </div>").arg(bagtraking);
+
   lAboutText->setText(html);
+
+  this->setWindowTitle(title);
+
+  lIcon->setPixmap(QPixmap(_icon_48x48));
 }

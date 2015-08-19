@@ -28,7 +28,13 @@
 extern const QString _name;
 extern const QString _version;
 extern const QString _description;
+extern const QString _ext_description;
 extern const QString _icon_48x48;
+extern const QString _developers_name;
+extern const QString _developers_site;
+extern const QString _home_page;
+extern const QString _bagtracker_page;
+
 
 class AboutDialog : public QDialog, private Ui::AboutDialog
 {

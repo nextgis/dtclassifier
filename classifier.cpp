@@ -28,8 +28,16 @@
 #include "classifierdialog.h"
 #include "aboutdialog.h"
 
+static const QString _developers_name = "NextGIS";
+static const QString _developers_site = QObject::tr("http://nextgis.ru/en/");
+
+static const QString _home_page = "https://github.com/nextgis/dtclassifier";
+static const QString _bagtracker_page = "https://github.com/nextgis/dtclassifier/issues";
+
 static const QString _name = QObject::tr( "DTclassifier" );
 static const QString _description = QObject::tr( "Raster classification using decision tree" );
+static const QString _ext_description = QObject::tr( "This plugin allows to selected areas of interest (presence) and areas of no interest (absence) and then classifies raster data using collected training data to find more of areas of interest." );
+
 static const QString _category = QObject::tr( "Raster" );
 static const QString _version = QString( "0.4.1" );
 static const QString _icon = ":/classifier/icons/classifier.png";
