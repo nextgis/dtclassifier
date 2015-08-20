@@ -49,7 +49,7 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
     void updateStepProgress();
     void toggleDiscreteLabelsCheckBoxState( bool checked );
     void toggleKernelSizeSpinState( int state );
-    void validateLayer( int index );
+    void cmbUserSelectionHandler( int index );
     void validateKernelSize();
 
   private:
@@ -85,6 +85,8 @@ class ClassifierDialog : public QDialog, private Ui::ClassifierDialogBase
 
     //! create buffers around lines and write them to output layer
     QgsVectorLayer* createBuffer( QgsVectorLayer* src );
+
+	void layersCmbCustomization();
 };
 
 #endif // CLASSIFIERDIALOG_H

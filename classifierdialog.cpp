@@ -27,6 +27,8 @@
 #include <QList>
 #include <QDir>
 #include <QToolTip>
+#include <QStandardItemModel>
+#include <QStandardItem>
 
 #include <cmath>
 
@@ -71,8 +73,8 @@ ClassifierDialog::ClassifierDialog( QWidget* parent, QgisInterface* iface )
   // need this for working with rasters
   GDALAllRegister();
 
-  connect( cmbPresenceLayer, SIGNAL( activated( int ) ), this, SLOT( validateLayer( int ) ) );
-  connect( cmbAbsenceLayer, SIGNAL( activated( int ) ), this, SLOT( validateLayer( int ) ) );
+  connect( cmbPresenceLayer, SIGNAL( activated( int ) ), this, SLOT( cmbUserSelectionHandler( int ) ) );
+  connect( cmbAbsenceLayer, SIGNAL( activated( int ) ), this, SLOT( cmbUserSelectionHandler( int ) ) );
   connect( btnMultiPresence, SIGNAL( clicked() ), this, SLOT( selectLayers() ) );
   connect( btnMultiAbsence, SIGNAL( clicked() ), this, SLOT( selectLayers() ) );
   connect( btnOutputFile, SIGNAL( clicked() ), this, SLOT( selectOutputFile() ) );
@@ -98,22 +100,25 @@ void ClassifierDialog::selectLayers()
 {
   QString senderName = sender()->objectName();
 
-  LayerSelectorDialog dlg( this );
+  QStringList* alreadySelectedLayers;
+  QStringList* willbeSelected;
 
   if ( senderName == "btnMultiPresence" )
   {
     if ( btnMultiPresence->isChecked() )
     {
-      //~ cmbPresenceLayer->setCurrentIndex( cmbPresenceLayer->count() - 1 );
-      //~ cmbPresenceLayer->setEnabled( false );
-      dlg.setLayerList( &mPresenceLayers );
+      //dlg.setLayerList( &mPresenceLayers );
+		alreadySelectedLayers = &mAbsenceLayers;
+		willbeSelected = &mPresenceLayers;
     }
     else
     {
 	  cmbPresenceLayer->removeItem( cmbPresenceLayer->count() - 1 );
       cmbPresenceLayer->setEnabled( true );
-      cmbPresenceLayer->setCurrentIndex( 0 );
+      cmbPresenceLayer->setCurrentIndex( -1 );
       mPresenceLayers.clear();
+	  
+	  layersCmbCustomization();
       return;
     }
   }
@@ -121,19 +126,24 @@ void ClassifierDialog::selectLayers()
   {
     if ( btnMultiAbsence->isChecked() )
     {
-      //~ cmbAbsenceLayer->setCurrentIndex( cmbAbsenceLayer->count() - 1 );
-      //~ cmbAbsenceLayer->setEnabled( false );
-      dlg.setLayerList( &mAbsenceLayers );
+      //dlg.setLayerList( &mAbsenceLayers );
+		alreadySelectedLayers = &mPresenceLayers;
+		willbeSelected = &mAbsenceLayers;
     }
     else
     {
 	  cmbAbsenceLayer->removeItem( cmbAbsenceLayer->count() - 1 );
       cmbAbsenceLayer->setEnabled( true );
-      cmbAbsenceLayer->setCurrentIndex( 0 );
+      cmbAbsenceLayer->setCurrentIndex( -1 );
       mAbsenceLayers.clear();
+	  
+	  layersCmbCustomization();
       return;
     }
   }
+
+  LayerSelectorDialog dlg( this, alreadySelectedLayers);
+  dlg.setLayerList( willbeSelected );
 
   if ( dlg.exec() )
   {
@@ -142,14 +152,14 @@ void ClassifierDialog::selectLayers()
 	  cmbPresenceLayer->insertItem(cmbPresenceLayer->count(), mMultLayersSelectText);
       cmbPresenceLayer->setCurrentIndex( cmbPresenceLayer->count() - 1 );
       cmbPresenceLayer->setEnabled( false );
-      dlg.setLayerList( &mPresenceLayers );
+      //dlg.setLayerList( &mPresenceLayers );
     }
     else if ( senderName == "btnMultiAbsence" && btnMultiAbsence->isChecked() )
     {
 	  cmbAbsenceLayer->insertItem(cmbAbsenceLayer->count(), mMultLayersSelectText);
       cmbAbsenceLayer->setCurrentIndex( cmbAbsenceLayer->count() - 1 );
       cmbAbsenceLayer->setEnabled( false );
-      dlg.setLayerList( &mAbsenceLayers );
+      //dlg.setLayerList( &mAbsenceLayers );
     }
   }
   else
@@ -163,6 +173,8 @@ void ClassifierDialog::selectLayers()
       btnMultiAbsence->setChecked( false );
     }
   }
+
+  layersCmbCustomization();
 }
 
 void ClassifierDialog::selectOutputFile()
@@ -198,8 +210,6 @@ void ClassifierDialog::selectOutputFile()
 
 void ClassifierDialog::doClassification()
 {
-  buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
-
   bool is_valid = true;
 
   if (leOutputRaster->text().isEmpty()) 
@@ -226,8 +236,38 @@ void ClassifierDialog::doClassification()
 	rastersList->setStyleSheet("");
   }
 
+  if (cmbAbsenceLayer->currentIndex() == -1)
+  {
+	cmbAbsenceLayer->setEditable(true);
+	cmbAbsenceLayer->lineEdit()->setEnabled(false);
+	cmbAbsenceLayer->lineEdit()->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
+	cmbAbsenceLayer->lineEdit()->setPlaceholderText(tr("Select one or more layers!"));
+
+	is_valid = false;
+  }
+  else
+  {
+	cmbAbsenceLayer->setEditable(false);
+  }
+
+  if (cmbPresenceLayer->currentIndex() == -1)
+  {	
+	cmbPresenceLayer->setEditable(true);
+	cmbPresenceLayer->lineEdit()->setEnabled(false);
+	cmbPresenceLayer->lineEdit()->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
+	cmbPresenceLayer->lineEdit()->setPlaceholderText(tr("Select one or more layers!"));
+
+	is_valid = false;
+  }
+  else
+  {
+	cmbPresenceLayer->setEditable(false);
+  }
+
   if (is_valid == false)
 	  return;
+
+  buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 
   // save checkboxes state
   QSettings settings( "NextGIS", "DTclassifier" );
@@ -295,6 +335,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   // create layer and populate it with train points
   QgsVectorLayer* trainLayer = createTrainLayer();  
 
+  /*
   if ( !btnMultiPresence->isChecked() )
   {
     mPresenceLayers.append( cmbPresenceLayer->currentText() );
@@ -303,6 +344,7 @@ void ClassifierDialog::rasterClassification( const QString& rasterFileName )
   {
     mAbsenceLayers.append( cmbAbsenceLayer->currentText() );
   }
+  */
 
   mergeLayers( trainLayer, mPresenceLayers, inRaster, 1 );
   mergeLayers( trainLayer, mAbsenceLayers, inRaster, 0 );
@@ -559,7 +601,11 @@ void ClassifierDialog::manageGui()
 	}
   }
 
+  cmbPresenceLayer->setCurrentIndex( -1 );
+  cmbAbsenceLayer->setCurrentIndex( -1 );
+
   // display different layers in combos. I don't know why this is so neccessary
+  /*
   if ( cmbPresenceLayer->count() > 3 )
   {
     cmbPresenceLayer->setCurrentIndex( 0 );
@@ -570,6 +616,7 @@ void ClassifierDialog::manageGui()
     cmbPresenceLayer->setCurrentIndex( -1 );
     cmbAbsenceLayer->setCurrentIndex( -1 );
   }
+  */
 }
 
 void ClassifierDialog::toggleDiscreteLabelsCheckBoxState( bool checked )
@@ -605,49 +652,57 @@ void ClassifierDialog::validateKernelSize()
   }
 }
 
-void ClassifierDialog::validateLayer( int index )
+void ClassifierDialog::cmbUserSelectionHandler( int index )
 {
-  QString senderName = sender()->objectName();
+	QString senderName = sender()->objectName();
+	if (senderName == cmbPresenceLayer->objectName())
+	{
+		mPresenceLayers.clear();
+		if (index != -1)
+		{
+			mPresenceLayers.append(cmbPresenceLayer->itemText(index));
+		}
+	}
+	if (senderName == cmbAbsenceLayer->objectName())
+	{
+		mAbsenceLayers.clear();
+		if (index != -1)
+		{
+			mAbsenceLayers.append(cmbAbsenceLayer->itemText(index));
+		}
+	}
 
-  if ( index == cmbPresenceLayer->count() - 1 )
-  {
-    if ( senderName == "cmbPresenceLayer" )
-    {
-      cmbPresenceLayer->setCurrentIndex( --index );
-    }
-    else
-    {
-      cmbAbsenceLayer->setCurrentIndex( --index );
-    }
-  }
-
-  if ( senderName == "cmbPresenceLayer" && index == cmbAbsenceLayer->currentIndex() )
-  {
-    if ( index == cmbPresenceLayer->count() - 2 )
-    {
-      index--;
-    }
-    else
-    {
-      index++;
-    }
-    cmbPresenceLayer->setCurrentIndex( index );
-  }
-
-  if ( senderName == "cmbAbsenceLayer" && index == cmbPresenceLayer->currentIndex() )
-  {
-    if ( index == cmbPresenceLayer->count() - 2 )
-    {
-      index--;
-    }
-    else
-    {
-      index++;
-    }
-    cmbAbsenceLayer->setCurrentIndex( index );
-  }
+	layersCmbCustomization();
 }
 
+void ClassifierDialog::layersCmbCustomization()
+{	
+	QStandardItemModel* aModel = qobject_cast<QStandardItemModel*>(cmbAbsenceLayer->model());
+	for (int i = 0; i < aModel->rowCount(); ++i)
+	{	
+		QStandardItem* aItem = aModel->item(i);
+		aItem->setEnabled(true);
+
+		for (int j = 0; j < mPresenceLayers.count(); ++j)
+		{
+			if (aItem->text() == mPresenceLayers[j])
+				aItem->setEnabled(false);
+		}
+	}
+
+	QStandardItemModel* pModel = qobject_cast<QStandardItemModel*>(cmbPresenceLayer->model());
+	for (int i = 0; i < pModel->rowCount(); ++i)
+	{
+		QStandardItem* pItem = pModel->item(i);
+		pItem->setEnabled(true);
+
+		for (int j = 0; j < mAbsenceLayers.count(); ++j)
+		{
+			if (pItem->text() == mAbsenceLayers[j])
+				pItem->setEnabled(false);
+		}
+	}
+}
 void ClassifierDialog::updateInputRasters()
 {
   QList<QListWidgetItem *> selection = rastersList->selectedItems();
@@ -874,15 +929,7 @@ QgsVectorLayer* ClassifierDialog::createTrainLayer()
 {
   // create memory layer
   QgsCoordinateReferenceSystem srcCRS(mFileInfo.projection());
-
-	//QgsMessageLog::logMessage(QString("ClassifierDialog::createTrainLayer 1: %1").arg(srcCRS.authid()), "DTClassifire");
-	//QgsMessageLog::logMessage(QString("ClassifierDialog::createTrainLayer 1: %1").arg(srcCRS.geographicCRSAuthId()), "DTClassifire");
-	//QgsMessageLog::logMessage(QString("ClassifierDialog::createTrainLayer 1: %1").arg(srcCRS.postgisSrid()), "DTClassifire");
-	//QgsMessageLog::logMessage(QString("ClassifierDialog::createTrainLayer 1: %1").arg(srcCRS.srsid()), "DTClassifire");
-
   QgsVectorLayer* vl = new QgsVectorLayer( QString("Point?crs=%1").arg(srcCRS.authid()), "train_points", "memory" );
-
-  //QgsMessageLog::logMessage("ClassifierDialog::createTrainLayer 2", "DTClassifire");
 
   QgsVectorDataProvider* provider = vl->dataProvider();
 

@@ -45,7 +45,7 @@ LayerSelectorDialog::LayerSelectorDialog( QWidget *parent )
 
 LayerSelectorDialog::LayerSelectorDialog( QWidget *parent, QStringList *layers )
     : QDialog( parent )
-    , mLayers( layers )
+    , mUnavailableLayers( layers )
 {
   setupUi( this );
 
@@ -122,6 +122,15 @@ void LayerSelectorDialog::populateLayers()
         default:
           break;
       } // switch
+
+	  for( int i = 0; i < mUnavailableLayers->count(); ++i)
+	  {
+		if (mUnavailableLayers->at(i) == item->text(0))
+		{
+			item->setFlags(Qt::NoItemFlags);
+		}
+	  }
+
     }
   }
 }

@@ -47,7 +47,9 @@ class LayerSelectorDialog : public QDialog, private Ui::LayerSelectorDialogBase
   private:
     void populateLayers();
 
+
     QStringList *mLayers;
+	QStringList *mUnavailableLayers;
 };
 
 #endif // LAYERSELECTORDIALOG_H
