@@ -108,17 +108,17 @@ void ClassifierDialog::selectLayers()
     if ( btnMultiPresence->isChecked() )
     {
       //dlg.setLayerList( &mPresenceLayers );
-		alreadySelectedLayers = &mAbsenceLayers;
-		willbeSelected = &mPresenceLayers;
+    alreadySelectedLayers = &mAbsenceLayers;
+    willbeSelected = &mPresenceLayers;
     }
     else
     {
-	  cmbPresenceLayer->removeItem( cmbPresenceLayer->count() - 1 );
+    cmbPresenceLayer->removeItem( cmbPresenceLayer->count() - 1 );
       cmbPresenceLayer->setEnabled( true );
       cmbPresenceLayer->setCurrentIndex( -1 );
       mPresenceLayers.clear();
-	  
-	  layersCmbCustomization();
+    
+    layersCmbCustomization();
       return;
     }
   }
@@ -127,17 +127,17 @@ void ClassifierDialog::selectLayers()
     if ( btnMultiAbsence->isChecked() )
     {
       //dlg.setLayerList( &mAbsenceLayers );
-		alreadySelectedLayers = &mPresenceLayers;
-		willbeSelected = &mAbsenceLayers;
+    alreadySelectedLayers = &mPresenceLayers;
+    willbeSelected = &mAbsenceLayers;
     }
     else
     {
-	  cmbAbsenceLayer->removeItem( cmbAbsenceLayer->count() - 1 );
+    cmbAbsenceLayer->removeItem( cmbAbsenceLayer->count() - 1 );
       cmbAbsenceLayer->setEnabled( true );
       cmbAbsenceLayer->setCurrentIndex( -1 );
       mAbsenceLayers.clear();
-	  
-	  layersCmbCustomization();
+    
+    layersCmbCustomization();
       return;
     }
   }
@@ -149,14 +149,14 @@ void ClassifierDialog::selectLayers()
   {
     if ( senderName == "btnMultiPresence" && btnMultiPresence->isChecked() )
     {
-	  cmbPresenceLayer->insertItem(cmbPresenceLayer->count(), mMultLayersSelectText);
+    cmbPresenceLayer->insertItem(cmbPresenceLayer->count(), mMultLayersSelectText);
       cmbPresenceLayer->setCurrentIndex( cmbPresenceLayer->count() - 1 );
       cmbPresenceLayer->setEnabled( false );
       //dlg.setLayerList( &mPresenceLayers );
     }
     else if ( senderName == "btnMultiAbsence" && btnMultiAbsence->isChecked() )
     {
-	  cmbAbsenceLayer->insertItem(cmbAbsenceLayer->count(), mMultLayersSelectText);
+    cmbAbsenceLayer->insertItem(cmbAbsenceLayer->count(), mMultLayersSelectText);
       cmbAbsenceLayer->setCurrentIndex( cmbAbsenceLayer->count() - 1 );
       cmbAbsenceLayer->setEnabled( false );
       //dlg.setLayerList( &mAbsenceLayers );
@@ -215,57 +215,57 @@ void ClassifierDialog::doClassification()
   if (leOutputRaster->text().isEmpty()) 
   {
     leOutputRaster->setPlaceholderText( tr("Please, choose output file!") );
-	leOutputRaster->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
-	is_valid = false;
+  leOutputRaster->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
+  is_valid = false;
   }
   else
   {
-	leOutputRaster->setStyleSheet("");
+  leOutputRaster->setStyleSheet("");
   }
 
   if (rastersList->selectedItems().count() == 0)
   {
     rastersList->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
-	QPoint point = QPoint(geometry().left() + rastersList->geometry().left(),
+  QPoint point = QPoint(geometry().left() + rastersList->geometry().left(),
                               geometry().top() + rastersList->geometry().top());
-	QToolTip::showText(point, tr("Select one or more layers!"));
-	is_valid = false;
+  QToolTip::showText(point, tr("Select one or more layers!"));
+  is_valid = false;
   }
   else
   {
-	rastersList->setStyleSheet("");
+  rastersList->setStyleSheet("");
   }
 
   if (cmbAbsenceLayer->currentIndex() == -1)
   {
-	cmbAbsenceLayer->setEditable(true);
-	cmbAbsenceLayer->lineEdit()->setEnabled(false);
-	cmbAbsenceLayer->lineEdit()->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
-	cmbAbsenceLayer->lineEdit()->setPlaceholderText(tr("Select one or more layers!"));
+  cmbAbsenceLayer->setEditable(true);
+  cmbAbsenceLayer->lineEdit()->setEnabled(false);
+  cmbAbsenceLayer->lineEdit()->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
+  cmbAbsenceLayer->lineEdit()->setPlaceholderText(tr("Select one or more layers!"));
 
-	is_valid = false;
+  is_valid = false;
   }
   else
   {
-	cmbAbsenceLayer->setEditable(false);
+  cmbAbsenceLayer->setEditable(false);
   }
 
   if (cmbPresenceLayer->currentIndex() == -1)
-  {	
-	cmbPresenceLayer->setEditable(true);
-	cmbPresenceLayer->lineEdit()->setEnabled(false);
-	cmbPresenceLayer->lineEdit()->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
-	cmbPresenceLayer->lineEdit()->setPlaceholderText(tr("Select one or more layers!"));
+  { 
+  cmbPresenceLayer->setEditable(true);
+  cmbPresenceLayer->lineEdit()->setEnabled(false);
+  cmbPresenceLayer->lineEdit()->setStyleSheet("background-color: rgba(255, 0, 0, 50);");
+  cmbPresenceLayer->lineEdit()->setPlaceholderText(tr("Select one or more layers!"));
 
-	is_valid = false;
+  is_valid = false;
   }
   else
   {
-	cmbPresenceLayer->setEditable(false);
+  cmbPresenceLayer->setEditable(false);
   }
 
   if (is_valid == false)
-	  return;
+    return;
 
   buttonBox->button(QDialogButtonBox::Ok)->setEnabled(false);
 
@@ -316,7 +316,7 @@ void ClassifierDialog::doClassification()
     QString smoothFileName = fi.absoluteDir().absolutePath() + "/" + fi.baseName() + "_smooth.tif";
     QgsRasterLayer* smoothLayer;
     smoothLayer = new QgsRasterLayer( smoothFileName, QFileInfo( smoothFileName ).baseName() );
-	applyRasterStyle( smoothLayer, Qt::blue );
+  applyRasterStyle( smoothLayer, Qt::blue );
     QgsMapLayerRegistry::instance()->addMapLayer( smoothLayer );
   }
 
@@ -575,30 +575,30 @@ void ClassifierDialog::manageGui()
 
   if ( mapLayers.count() == 0)
   {
-	cmbPresenceLayer->setEnabled( false );
-	cmbAbsenceLayer->setEnabled( false );
-	btnMultiPresence->setEnabled( false );
-	btnMultiAbsence->setEnabled( false );
-	return;
+  cmbPresenceLayer->setEnabled( false );
+  cmbAbsenceLayer->setEnabled( false );
+  btnMultiPresence->setEnabled( false );
+  btnMultiAbsence->setEnabled( false );
+  return;
   }
 
   for ( ; layer_it != mapLayers.end(); ++layer_it )
   {
-	if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
-	{
-	  cmbPresenceLayer->insertItem( 0, layer_it.value()->name() );
-	  cmbAbsenceLayer->insertItem( 0, layer_it.value()->name() );
-	}
-	else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
-	{
-	  QgsRasterLayer* layer = qobject_cast<QgsRasterLayer *> ( layer_it.value() );
+  if ( layer_it.value()->type() == QgsMapLayer::VectorLayer )
+  {
+    cmbPresenceLayer->insertItem( 0, layer_it.value()->name() );
+    cmbAbsenceLayer->insertItem( 0, layer_it.value()->name() );
+  }
+  else if ( layer_it.value()->type() == QgsMapLayer::RasterLayer )
+  {
+    QgsRasterLayer* layer = qobject_cast<QgsRasterLayer *> ( layer_it.value() );
 
-	  if ( layer->providerType() != "gdal" ) //if ( layer->usesProvider() && layer->providerKey() != "gdal" )
-	  {
-		continue;
-	  }
-	  rastersList->addItem( new QListWidgetItem( layer_it.value()->name() ) );
-	}
+    if ( layer->providerType() != "gdal" ) //if ( layer->usesProvider() && layer->providerKey() != "gdal" )
+    {
+    continue;
+    }
+    rastersList->addItem( new QListWidgetItem( layer_it.value()->name() ) );
+  }
   }
 
   cmbPresenceLayer->setCurrentIndex( -1 );
@@ -654,54 +654,54 @@ void ClassifierDialog::validateKernelSize()
 
 void ClassifierDialog::cmbUserSelectionHandler( int index )
 {
-	QString senderName = sender()->objectName();
-	if (senderName == cmbPresenceLayer->objectName())
-	{
-		mPresenceLayers.clear();
-		if (index != -1)
-		{
-			mPresenceLayers.append(cmbPresenceLayer->itemText(index));
-		}
-	}
-	if (senderName == cmbAbsenceLayer->objectName())
-	{
-		mAbsenceLayers.clear();
-		if (index != -1)
-		{
-			mAbsenceLayers.append(cmbAbsenceLayer->itemText(index));
-		}
-	}
+  QString senderName = sender()->objectName();
+  if (senderName == cmbPresenceLayer->objectName())
+  {
+    mPresenceLayers.clear();
+    if (index != -1)
+    {
+      mPresenceLayers.append(cmbPresenceLayer->itemText(index));
+    }
+  }
+  if (senderName == cmbAbsenceLayer->objectName())
+  {
+    mAbsenceLayers.clear();
+    if (index != -1)
+    {
+      mAbsenceLayers.append(cmbAbsenceLayer->itemText(index));
+    }
+  }
 
-	layersCmbCustomization();
+  layersCmbCustomization();
 }
 
 void ClassifierDialog::layersCmbCustomization()
-{	
-	QStandardItemModel* aModel = qobject_cast<QStandardItemModel*>(cmbAbsenceLayer->model());
-	for (int i = 0; i < aModel->rowCount(); ++i)
-	{	
-		QStandardItem* aItem = aModel->item(i);
-		aItem->setEnabled(true);
+{ 
+  QStandardItemModel* aModel = qobject_cast<QStandardItemModel*>(cmbAbsenceLayer->model());
+  for (int i = 0; i < aModel->rowCount(); ++i)
+  { 
+    QStandardItem* aItem = aModel->item(i);
+    aItem->setEnabled(true);
 
-		for (int j = 0; j < mPresenceLayers.count(); ++j)
-		{
-			if (aItem->text() == mPresenceLayers[j])
-				aItem->setEnabled(false);
-		}
-	}
+    for (int j = 0; j < mPresenceLayers.count(); ++j)
+    {
+      if (aItem->text() == mPresenceLayers[j])
+        aItem->setEnabled(false);
+    }
+  }
 
-	QStandardItemModel* pModel = qobject_cast<QStandardItemModel*>(cmbPresenceLayer->model());
-	for (int i = 0; i < pModel->rowCount(); ++i)
-	{
-		QStandardItem* pItem = pModel->item(i);
-		pItem->setEnabled(true);
+  QStandardItemModel* pModel = qobject_cast<QStandardItemModel*>(cmbPresenceLayer->model());
+  for (int i = 0; i < pModel->rowCount(); ++i)
+  {
+    QStandardItem* pItem = pModel->item(i);
+    pItem->setEnabled(true);
 
-		for (int j = 0; j < mAbsenceLayers.count(); ++j)
-		{
-			if (pItem->text() == mAbsenceLayers[j])
-				pItem->setEnabled(false);
-		}
-	}
+    for (int j = 0; j < mAbsenceLayers.count(); ++j)
+    {
+      if (pItem->text() == mAbsenceLayers[j])
+        pItem->setEnabled(false);
+    }
+  }
 }
 void ClassifierDialog::updateInputRasters()
 {
@@ -1004,7 +1004,15 @@ void ClassifierDialog::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* 
   QgsFeatureList lstFeatures;
 
   QVector<float> rasterData( mFileInfo.xSize() * bandCount );
+    
+  QgsCoordinateReferenceSystem srcCRS;
+  srcCRS = src->crs();
+  
+  QgsCoordinateReferenceSystem destCRS;
+  destCRS = dst->crs();
 
+  QgsCoordinateTransform xform = QgsCoordinateTransform(srcCRS, destCRS);
+  
   //srcProvider->rewind();
   //srcProvider->select();
 
@@ -1014,6 +1022,8 @@ void ClassifierDialog::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* 
   while ( fit.nextFeature( feat ) )
   {
     geom = feat.geometry();
+    geom->transform(xform);
+    
     bbox = geom->boundingBox();
 
     xMin = bbox.xMinimum();
@@ -1042,10 +1052,10 @@ void ClassifierDialog::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* 
           for ( int i = 0; i < bandCount; ++i )
           {
             //newFeat->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
-			  newFeat->setAttribute( i, QVariant( (double)rasterData[ i ] ) );
+        newFeat->setAttribute( i, QVariant( (double)rasterData[ i ] ) );
           }
           //newFeat->addAttribute( bandCount, QVariant( layerType ) );
-		  newFeat->setAttribute( bandCount, QVariant( layerType ) );
+      newFeat->setAttribute( bandCount, QVariant( layerType ) );
           lstFeatures.append( *newFeat );
         }
       }
@@ -1077,6 +1087,13 @@ void ClassifierDialog::copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDA
 
   QVector<float> rasterData( mFileInfo.xSize() * bandCount );
 
+  QgsCoordinateReferenceSystem srcCRS;
+  srcCRS = src->crs();
+  
+  QgsCoordinateReferenceSystem destCRS;
+  destCRS = dst->crs();
+
+  QgsCoordinateTransform xform = QgsCoordinateTransform(srcCRS, destCRS);
   /*
   srcProvider->rewind();
   srcProvider->select();
@@ -1087,6 +1104,8 @@ void ClassifierDialog::copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDA
   while ( fit.nextFeature( inFeat ) )
   {
     geom = inFeat.geometry();
+    geom->transform(xform);
+    
     outFeat = new QgsFeature();
     outFeat->setGeometry( geom );
     outFeat->initAttributes(bandCount + 1);
@@ -1096,10 +1115,10 @@ void ClassifierDialog::copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDA
     for ( int i = 0; i < bandCount; ++i )
     {
       //outFeat->addAttribute( i, QVariant( (double)rasterData[ i ] ) );
-	  outFeat->setAttribute( i, QVariant( (double)rasterData[ i ] ) );
+    outFeat->setAttribute( i, QVariant( (double)rasterData[ i ] ) );
     }
 //    outFeat->addAttribute( bandCount, QVariant( layerType ) );
-	outFeat->setAttribute( bandCount, QVariant( layerType ) );
+  outFeat->setAttribute( bandCount, QVariant( layerType ) );
 
     lstFeatures.append( *outFeat );
   }
