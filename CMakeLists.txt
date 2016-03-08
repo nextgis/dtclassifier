@@ -54,6 +54,7 @@ INCLUDE_DIRECTORIES(
      ../../core/renderer
      ../../core/symbology
      ../../core/symbology-ng
+     ../../core/geometry
      ../../core
      ../../gui
      ..
