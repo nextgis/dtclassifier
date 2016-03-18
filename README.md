@@ -1,4 +1,4 @@
-# dtclassifier
+# DTclassifier
 DTClassifier plugin for QGIS. Uses decision trees from OpenCV to classify any kind of rasters with QGIS. Optimized for simplicity of operation.
 
 Supports QGIS 2.8+
@@ -13,3 +13,9 @@ Videos:
 * QGIS DTClassifier in action. Part 2. Finding changes using two images https://www.youtube.com/watch?v=TYLZ4DwBQJM
 
 Icon by by d͡ʒɛrmi Good https://thenounproject.com/term/light-and-dark/94012/
+
+Commercial support
+----------
+Need to fix a bug or add a feature to DTclassifier? We provide custom development and support for this software. [Contact us](http://nextgis.ru/en/contact/) to discuss options!
+
+[![http://nextgis.com](http://nextgis.ru/img/nextgis.png)](http://nextgis.com)
