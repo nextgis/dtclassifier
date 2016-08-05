@@ -78,7 +78,7 @@ void Classifier::help()
 
 void Classifier::showMainDialog()
 {
-  ClassifierDialog dlg( 0, mIface );
+  ClassifierDialog dlg( 0 );
   dlg.exec();
 }
 
