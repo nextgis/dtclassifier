@@ -54,7 +54,7 @@ void usage()
             << "\n  " << "Create model only using a previously saved train layer:" << std::endl
             << "    " << "classifier --use_train_layer train_layer.shp --save_model model.yaml" << std::endl
             << "\n  " << "Create train layer only:" << std::endl
-            << "    " << "classifier --input_rasters rast1 [rast2, ...] --presence vect1 [vect2, ...] --absence vect1 [vect2, ...] --use_train_layer train_layer.shp" << std::endl
+            << "    " << "classifier --input_rasters rast1 [rast2, ...] --presence vect1 [vect2, ...] --absence vect1 [vect2, ...] --save_train_layer train_layer.shp" << std::endl
             ;
 }
 
