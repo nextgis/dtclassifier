@@ -26,6 +26,7 @@
 
 #include "classifier.h"
 #include "classifierdialog.h"
+
 #include "aboutdialog.h"
 
 static const QString _developers_name = "NextGIS";
@@ -42,6 +43,7 @@ static const QString _category = QObject::tr( "Raster" );
 static const QString _version = QString( "0.4.1" );
 static const QString _icon = ":/classifier/icons/classifier.png";
 static const QString _icon_48x48 = ":/classifier/icons/classifier_48x48.png";
+
 
 Classifier::Classifier( QgisInterface* iface ):
 	QgisPlugin( _name, _description, _category, _version, QgisPlugin::UI ),
@@ -84,7 +86,19 @@ void Classifier::showMainDialog()
 
 void Classifier::showAboutDialog()
 {
-  AboutDialog dlg(0);
+  AboutDialog dlg(
+      0,
+      _name,
+      _version,
+      _description,
+      _ext_description,
+      _icon_48x48,
+      _developers_name,
+      _developers_site,
+      _home_page,
+      _bagtracker_page
+  );
+
   dlg.exec();
 }
 

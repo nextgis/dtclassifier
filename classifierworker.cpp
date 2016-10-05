@@ -657,8 +657,9 @@ void CreateTrainLayer::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* 
   QgsCoordinateReferenceSystem destCRS;
   destCRS = dst->crs();
 
-  QgsCoordinateTransform xform = QgsCoordinateTransform(srcCRS, destCRS);
-  
+  QgsCoordinateTransform* xform = new QgsCoordinateTransform();
+  xform->setSourceCrs(srcCRS);
+  xform->setDestCRS(destCRS);
   //srcProvider->rewind();
   //srcProvider->select();
 
@@ -668,7 +669,7 @@ void CreateTrainLayer::pointsFromPolygons( QgsVectorLayer* src, QgsVectorLayer* 
   while ( fit.nextFeature( feat ) )
   {
     geom = feat.geometry();
-    geom->transform(xform);
+    geom->transform(*xform);
     
     bbox = geom->boundingBox();
 
@@ -753,7 +754,9 @@ void CreateTrainLayer::copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDA
   QgsCoordinateReferenceSystem destCRS;
   destCRS = dst->crs();
 
-  QgsCoordinateTransform xform = QgsCoordinateTransform(srcCRS, destCRS);
+  QgsCoordinateTransform* xform = new QgsCoordinateTransform();
+  xform->setSourceCrs(srcCRS);
+  xform->setDestCRS(destCRS);
   /*
   srcProvider->rewind();
   srcProvider->select();
@@ -764,7 +767,7 @@ void CreateTrainLayer::copyPoints( QgsVectorLayer* src, QgsVectorLayer* dst, GDA
   while ( fit.nextFeature( inFeat ) )
   {
     geom = inFeat.geometry();
-    geom->transform(xform);
+    geom->transform(*xform);
     
     outFeat = new QgsFeature();
     outFeat->setGeometry( geom );

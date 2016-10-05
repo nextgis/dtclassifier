@@ -63,7 +63,9 @@ ADD_LIBRARY (classifierplugin MODULE
 )
 
 INCLUDE_DIRECTORIES(
+     ${CMAKE_CURRENT_SOURCE_DIR}
      ${CMAKE_CURRENT_BINARY_DIR}
+     ${QGIS_INCLUDE_DIR}
      ${GDAL_INCLUDE_DIR}
      ${OpenCV_INCLUDE_DIR}
      ../../core/raster
@@ -78,8 +80,8 @@ INCLUDE_DIRECTORIES(
 )
 
 TARGET_LINK_LIBRARIES(classifierplugin
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
   ${OpenCV_LIBS}
 )
 
@@ -92,8 +94,8 @@ add_executable(classifier
 set_target_properties( classifier PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${QGIS_OUTPUT_DIRECTORY}/${QGIS_BIN_SUBDIR})
 
 TARGET_LINK_LIBRARIES(classifier
-  qgis_core
-  qgis_gui
+  ${QGIS_CORE_TARGET_NAME}
+  ${QGIS_GUI_TARGET_NAME}
   ${OpenCV_LIBS}
 )
 
