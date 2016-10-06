@@ -481,7 +481,7 @@ void PrepareInputRaster::doWork()
         if (mInRaster == NULL)
         {
         QString msg = QString("Can't open raster: %1").arg(mResultInputRasterFileName);
-        throw std::runtime_error(msg.toUtf8());
+        throw std::runtime_error(msg.toStdString());
         }
         QgsDebugMsg( QString("Result input raster opened") );
     }
