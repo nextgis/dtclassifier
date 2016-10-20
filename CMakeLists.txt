@@ -84,7 +84,6 @@ TARGET_LINK_LIBRARIES(classifierplugin
   ${QGIS_GUI_TARGET_NAME}
   ${OpenCV_LIBS}
 )
-
 add_executable(classifier
   ${CLASSIFIER_COMMON_SRCS}
   ${CLASSIFIER_UTIL_SRCS}
@@ -111,3 +110,17 @@ INSTALL(TARGETS classifier
   RUNTIME DESTINATION ${QGIS_BIN_DIR}
   LIBRARY DESTINATION ${QGIS_BIN_DIR}
 )
+
+if (WIN32)
+  get_filename_component(OpenCV_BUILD_DIR ${OpenCV_LIB_DIR_OPT} DIRECTORY)
+  file(GLOB OpenCV_DLLs 
+    ${OpenCV_BUILD_DIR}/bin/opencv_core[0-9][0-9][0-9][0-9].dll
+    ${OpenCV_BUILD_DIR}/bin/opencv_core[0-9][0-9][0-9][0-9].dll
+    ${OpenCV_BUILD_DIR}/bin/opencv_highgui[0-9][0-9][0-9][0-9].dll
+    ${OpenCV_BUILD_DIR}/bin/opencv_imgproc[0-9][0-9][0-9][0-9].dll
+    ${OpenCV_BUILD_DIR}/bin/opencv_legacy[0-9][0-9][0-9][0-9].dll
+    ${OpenCV_BUILD_DIR}/bin/opencv_ml[0-9][0-9][0-9][0-9].dll
+  )
+
+  install(FILES ${OpenCV_DLLs} DESTINATION ${QGIS_BIN_DIR})
+endif()
